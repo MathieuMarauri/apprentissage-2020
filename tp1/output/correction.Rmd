@@ -25,6 +25,7 @@ library("FNN") # fast KNN
 library("ggplot2") # data visualisation
 library("klaR") # fonction Naivebayes utilisée avec la librairie caret
 library("mlbench") # dataset Vehicle
+library("skimr")
 ```
 
 ```{r ggplot-theme, echo = FALSE}
@@ -50,33 +51,6 @@ scale_colour_continuous <- function(...) ggplot2::scale_colour_viridis_c(..., op
 scale_colour_discrete <- function(...) ggplot2::scale_colour_viridis_d(..., option = "viridis")
 scale_fill_continuous <- function(...) ggplot2::scale_fill_viridis_c(..., option = "viridis")
 scale_fill_discrete <- function(...) ggplot2::scale_fill_viridis_d(..., option = "viridis")
-
-# Set default color
-lapply(
-  X = list(
-    # Geoms that only require a default colour
-    list(geom = "abline", new = list(colour = "#498bf5")),
-    list(geom = "point", new = list(colour = "#498bf5")),
-    list(geom = "density", new = list(colour = "#498bf5")),
-    list(geom = "errorbar", new = list(colour = "#498bf5")),
-    list(geom = "errorbarh", new = list(colour = "#498bf5")),
-    list(geom = "hline", new = list(colour = "#498bf5")),
-    list(geom = "vline", new = list(colour = "#498bf5")),
-    list(geom = "line", new = list(colour = "#498bf5")),
-    list(geom = "text", new = list(colour = "black")),
-    # Geoms that only require a default fill
-    list(geom = "area", new = list(fill = "#498bf5", colour = "#498bf5", alpha = .7)),
-    list(geom = "ribbon", new = list(fill = "#498bf5")),
-    list(geom = "bar", new = list(fill = "#498bf5")),
-    list(geom = "col", new = list(fill = "#498bf5")),
-    list(geom = "dotplot", new = list(fill = "#498bf5")),
-    # Special geoms
-    list(geom = "boxplot", new = list(fill = "#498bf5", colour = "#498bf5", alpha = .7)),
-    list(geom = "smooth", new = list(fill = "#498bf5", colour = "#498bf5", alpha = .7)),
-    list(geom = "dotplot", new = list(colour = "#498bf5", fill = "#498bf5"))
-  ),
-  FUN = function(list) do.call(what = ggplot2::update_geom_defaults, args = list)
-)
 ```
 
 
@@ -411,7 +385,41 @@ sum(naive_bayes_pred == test$Y) / n_test
 
 >_Charger la table Vehicle après avoir chargé le package `mlbench`. Lire la description de la table. Combien de prédicteurs potentiels dans cette table ?_
 
+On commence par charger la table `Vehicule` avec la commande `data(Vehicle)` et par avoir un aperçu des données contenues dedans. On peut regarder directement les données en affichant le data.frame, visualiser un résumé avec `summary()` ou encore utiliser `skimr::skim()`.
 
+```{r vehicule, echo = FALSE}
+data(Vehicle)
+```
+
+La variable cible est `class`, elle comporte 4 modalités. Les autres variables sont toutes quantitatives et peuvent toutes être utilisées comme prédicteurs. 
+
+```{r predicteurs}
+predicteurs <- names(Vehicle)[-19]
+```
+
+
+## Question 2 
+
+>_Quelle fonction de coût utiliser ?_
+
+Dans le cas d'une classification, la fonction de coût est la précision du modèle. Pour $n$ observations de test on a donc :
+
+$$
+\mathscr{L}(y, \widehat{y}) = \sum_{i=1}^{n}1_{y_i\neq\widehat{y}_i}
+$$
+Pour calculer cette erreur on va séparer les données en un ensemble d'apprentissage et un ensemble de test. On définit une graine pour pouvoir reproduire les résultats et on choisit un ration 80/20. 
+
+```{r split}
+set.seed(123456)
+train_index <- sample(1:nrow(Vehicle), size = nrow(Vehicle) * .8)
+test_index <- setdiff(1:nrow(Vehicle), train_index)
+train <- Vehicle[train_index, ]
+test <- Vehicle[test_index, ]
+```
+
+## Question 3
+
+>_Quelle est la règle de décision associée à l'algorithme des k plus proches voisins ? Mettre en oeuvre les k plus proches voisins. Justifir le choix des paramètres et commenter les résultats._
 
 <br>
 
