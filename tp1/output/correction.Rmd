@@ -1,0 +1,418 @@
+---
+title: "Apprentissage supervisé - TP1"
+output:
+  html_document:
+    code_folding: show
+    toc: true
+    toc_depth: 2
+    theme: cerulean
+    highlight: tango
+    css: style.css
+---
+
+```{r initial_chunk, echo = FALSE, warning = FALSE, message = FALSE}
+library("knitr")
+opts_chunk$set(echo = TRUE, eval = TRUE, warning = FALSE, message = FALSE, cache = FALSE, fig.align = 'center', dpi = 300, out.width = '75%')
+```
+
+Les différentes librairies qui seront utilisés pour ce TP sont listés ici.
+
+```{r librairies}
+library("caret") # ensemble de meta-fonctions nécessaires au processus d'apprentissage supervisé
+library("class") # fonction knn
+library("e1071") # librairie nécessaire pour la fonction tune.knn
+library("FNN") # fast KNN
+library("ggplot2") # data visualisation
+library("klaR") # fonction Naivebayes utilisée avec la librairie caret
+library("mlbench") # dataset Vehicle
+```
+
+```{r ggplot-theme, echo = FALSE}
+# Set default ggplot theme
+theme_set(
+  theme_light(
+  base_size = 15
+  ) +
+  theme(
+    text = element_text(family = "Gibson", colour = "gray10"),
+    panel.border = element_blank(),
+    axis.line = element_line(colour = "gray50", size = .5),
+    axis.ticks = element_blank(),
+    strip.background = element_rect(colour = "gray50", fill = "transparent", size = .7),
+    strip.text.x = element_text(colour = "gray10"),
+    strip.text.y = element_text(colour = "gray10"),
+    legend.key.size = unit(1.5, "cm")
+  )
+)
+
+# Set default scales
+scale_colour_continuous <- function(...) ggplot2::scale_colour_viridis_c(..., option = "viridis")
+scale_colour_discrete <- function(...) ggplot2::scale_colour_viridis_d(..., option = "viridis")
+scale_fill_continuous <- function(...) ggplot2::scale_fill_viridis_c(..., option = "viridis")
+scale_fill_discrete <- function(...) ggplot2::scale_fill_viridis_d(..., option = "viridis")
+
+# Set default color
+lapply(
+  X = list(
+    # Geoms that only require a default colour
+    list(geom = "abline", new = list(colour = "#498bf5")),
+    list(geom = "point", new = list(colour = "#498bf5")),
+    list(geom = "density", new = list(colour = "#498bf5")),
+    list(geom = "errorbar", new = list(colour = "#498bf5")),
+    list(geom = "errorbarh", new = list(colour = "#498bf5")),
+    list(geom = "hline", new = list(colour = "#498bf5")),
+    list(geom = "vline", new = list(colour = "#498bf5")),
+    list(geom = "line", new = list(colour = "#498bf5")),
+    list(geom = "text", new = list(colour = "black")),
+    # Geoms that only require a default fill
+    list(geom = "area", new = list(fill = "#498bf5", colour = "#498bf5", alpha = .7)),
+    list(geom = "ribbon", new = list(fill = "#498bf5")),
+    list(geom = "bar", new = list(fill = "#498bf5")),
+    list(geom = "col", new = list(fill = "#498bf5")),
+    list(geom = "dotplot", new = list(fill = "#498bf5")),
+    # Special geoms
+    list(geom = "boxplot", new = list(fill = "#498bf5", colour = "#498bf5", alpha = .7)),
+    list(geom = "smooth", new = list(fill = "#498bf5", colour = "#498bf5", alpha = .7)),
+    list(geom = "dotplot", new = list(colour = "#498bf5", fill = "#498bf5"))
+  ),
+  FUN = function(list) do.call(what = ggplot2::update_geom_defaults, args = list)
+)
+```
+
+
+# Exercice 1 - Règles et risque de Bayes en discrimination binaire
+
+TODO : énoncé du problème ; correction 2 premières questions ; explication estimation densité ; explication validation / apprentissage /test ; mlr3 ; naive bayes sans caret ; 
+
+## Question 1
+
+>_Donner dans chacun des trois cas, si c'est possible, la règle de Bayes et le risque de Bayes._
+
+## Question 2
+
+>_Est-il possible de donner un indicateur de la complexité de ces problèmes et ainsi de les ordonner en fonction de leur complexité ?_
+
+## Question 3
+
+>_Simuler les données du cas 2 et créer en plus un échantillon test de taille 200 (avec le même modèle)._
+
+On va générer un vecteur de $X$ et un vecteur de $Y$ de longueur 1000. On fixe une graine pour que nos résultats soient reproductibles.
+
+```{r simul_data}
+# Nombre d'éléments dans l'échantillon
+n_train <- 1000
+
+# Générer X selon une loi normale
+set.seed(1)
+X <- rnorm(n_train)
+
+# Générer U selon une loi uniforme
+set.seed(2)
+U <- runif(n_train)
+
+# Générer le vecteur réponse Y selon le cas 2
+Y1 <- rep(0, n_train)
+Y1[X <= 0 & U <= 0.2] <- 1
+Y1[X > 0 & U > 0.4] <- 1
+
+# Y est transformé en factor pour faciliter l'utilisation de la fonction tune.knn dans la suite
+Y <- as.factor(Y1)
+
+# Créer un data.frame avec X et Y
+donnees <- data.frame(X, Y)
+```
+
+Sur le graphe suivant on peut voir la densité de $X$ selon la valeur prise par $Y$.
+
+```{r simul_plot}
+ggplot(
+  data = donnees,
+  mapping = aes(x = X, fill = Y)
+) +
+  geom_density(
+    alpha = .7
+  ) +
+  labs(
+    x = "X",
+    y = "Densité",
+    title = "Données d'apprentissage",
+    fill = "Y"
+  )
+```
+
+De la même manière on peut simuler des données de test qui seront utilisées pour mesurer l'erreur de nos modèles de prédictions.
+
+```{r simul_data_test}
+n_test <- 200
+set.seed(3)
+X <- rnorm(n_test)
+set.seed(4)
+U <- runif(n_test)
+Y2 <- rep(0, n_test)
+Y2[X <= 0 & U <= 0.2] <- 1
+Y2[X > 0 & U > 0.4] <- 1
+Y <- as.factor(Y2)
+test <- data.frame(X, Y)
+ggplot(
+  data = test,
+  mapping = aes(x = X, fill = Y)
+) +
+  geom_density(
+    alpha = .7
+  ) +
+  labs(
+    x = "X",
+    y = "Densité",
+    title = "Données de test",
+    fill = "Y"
+  )
+```
+
+## Question 4
+
+>_Quelle est la règle de décision associée à l'algorithme des k plus proches voisins ? Mettre en oeuvre les k plus proches voisins. Justifier le choix des paramètres et commenter les résultats en validation et sur l'échantillon test._
+
+#### La règle de décision
+
+Dans le cas d'une classification, la règle de décision associée aux $k$ plus-proches-voisins est le vote à la majorité. Pour $k=5$ par exemple, si 3 voisins ont $Y=0$ et 2 voisins ont $Y=1$ alors la prédiction sera $\widehat{Y}=0$.
+
+#### Un premier modèle
+
+On commence par lancer un modèle de k plus-proches-voisins avec un choix arbitraire pour $k$, 10 par exemple. Pour des questions de reproductibilité on fixe là aussi une seed. On utilise la fonction `class::knn()` qui prend 4 paramètres en entrée : 
+
+* `train` : les prédicteurs des données d'apprentissage,
+* `test` : les prédicteurs des données de tests sur lesquelles se feront les prédictions,
+* `cl` : le vecteur de la variable cible des données d'apprentissage,
+* `k` : le nombre de plus-proches-voisins souhaité.
+
+```{r knn}
+set.seed(123456)
+knn_pred <- knn(
+  train = as.matrix(donnees$X), # données d'apprentissage
+  test = as.matrix(test$X), # données à prédire
+  cl = donnees$Y, # vraies valeurs
+  k = 10 # nombre de voisins
+)
+```
+
+On peut calculer l'erreur et la précision de ce modèle. 
+
+```{r knn_perf, eval = FALSE}
+# Taux de bonnes prédictions
+sum(knn_pred == test$Y) / n_test
+
+# Taux d'erreur
+1 - sum(knn_pred == test$Y) / n_test
+```
+
+L'erreur est de `r 1 - sum(knn_pred == test$Y) / n_test`. 
+
+#### Le choix de $k$
+
+La valeur de $k$ a été définie de façon arbitraire, on peut optimiser ce choix en essayant différentes valeurs et en choisissant la meilleure. Cela se fait en découpant l'échantillon d'apprentissage en une partie apprentissage et une partie validation. La règle de décision est construite sur la partie apprentissage et les prédictions sont faites sur la partie validation. On peut ainsi mesurer une erreur sur des données qui n'ont pas servi à construire la règle de décision, les données de validation. Pour cela on utilise la fonction `e1071::tune.knn()` qui prend 4 paramètres en entrée : 
+
+* `x` : les prédicteurs
+* `y` : le vecteur cible
+* `k` : un vecteur de valeurs de $k$ à tester
+* `tunecontrol` : la méthode d'échantillonnage, sous la forme d'une fonction `tune.control(sampling = "cross")` pour de la validation croisée (dans ce cas il faut également spécifier l'argument `cross = 5` pour faire de la 5-fold cv) ou `tune.control(sampling = "boot")` pour faire du bootstrap.
+
+```{r knn_tune}
+knn_cross_results <- tune.knn(
+  x = donnees$X, # predicteurs
+  y = donnees$Y, # réponse
+  k = 1:50, # essayer knn avec K variant de 1 à 50
+  tunecontrol = tune.control(sampling = "cross"), # utilisation de la cross validation
+  cross = 5 # 5 blocks
+)
+```
+
+On peut visualiser les erreurs obtenues sur le graphique suivant.
+
+```{r knn_tune_plot}
+ggplot(
+  data = knn_cross_results$performances,
+  mapping = aes(x = k, y = error)
+) + 
+  geom_line() +
+  geom_point() + 
+  labs(
+    x = "k",
+    y = "Erreur de validation",
+    title = "Evolution de l'erreur selon k"
+  )
+```
+
+Le meilleur $k$ est obtenu avec la commande `knn_cross_results$best.parameters$k` : `r knn_cross_results$best.parameters$k`. De cette manière le choix de $k$ n'est plus arbitraire mais basé sur nos données et le $k$ donnant l'erreur minimale (sur les données d'apprentissage) est choisie. 
+
+_Remarque : la valeur optimale de $k$ peut varier à chaque fois que la commande est lancée. On verra dans l'exercice suivant comment on peut contourner ce problème._
+
+On peut relancer la prédiction avec le $k$ sélectionné et calculer le taux d'erreur comme précédemment. 
+
+```{r knn_opt}
+set.seed(123456)
+knn_pred <- knn(
+  train = as.matrix(donnees$X), # données d'apprentissage
+  test = as.matrix(test$X), # données à prédire
+  cl = donnees$Y, # vraies valeurs
+  k = knn_cross_results$best.parameters$k # nombre de voisins
+)
+```
+
+L'erreur est de `r 1 - sum(knn_pred == test$Y) / n_test`. 
+
+#### Analyse de l'erreur
+
+L'erreur obtenue est très proche de l'erreur de Bayes calculée à la question 1. Cela est due au fait que les données générées ne correspondent pas parfaitement à la loi définie dans l'énoncé du fait du faible nombre d'observations simulées (200). On peut simuler un nombre supérieur de données, 2000 par exemple, et recalculer l'erreur. Pour ce faire on procède comme précédemment. 
+
+```{r knn_2000}
+n_test2 <- 2000
+set.seed(3)
+X <- rnorm(n_test2)
+set.seed(4)
+U <- runif(n_test2)
+Y2 <- rep(0, n_test2)
+Y2[X <= 0 & U <= 0.2] <- 1
+Y2[X > 0 & U > 0.4] <- 1
+Y <- as.factor(Y2)
+test2 <- data.frame(X, Y)
+set.seed(123456)
+knn_pred2 <- knn(
+  train = as.matrix(donnees$X), # données d'apprentissage
+  test = as.matrix(test2$X), # données à prédire
+  cl = donnees$Y, # vraies valeurs
+  k = knn_cross_results$best.parameters$k # nombre de voisins
+)
+```
+
+L'erreur est maintenant de `r 1 - sum(knn_pred2 == test2$Y) / n_test2`. Elle est bien supérieur à l'erreur minimale théorique. 
+
+## Question 5
+
+>_Quelle est la règle de décision associée au bayésien naïf ? Mettre en oeuvre le Bayésien naïf. Justifier le choix des paramètres et commenter les résultats en validation et sur l'échantillon test._
+
+#### La règle de décision
+
+Avec le modèle bayésien naïf on calcule $\widehat{P}(Y=y|X=x)$ pour $y=0, 1$. Pour choisir la classe $Y$ on va prendre la probabilité la plus forte, c'est à dire celle qui est supérieur à $0,5$.
+
+#### Un premier modèle
+
+La fonction utilisée pour réaliser un modèle bayésien naïf est la fonction `klaR::NaiveBayes()`. Elle prend 2 paramètres en entrée : 
+
+* `formula` : une formule spécifiant le modèle, ici ce sera simplement `Y ~ X`,
+* `data` : un data.frame contenant les variables utilisées dans l'argument `formula`
+
+```{r nb}
+naive_bayes_model <- NaiveBayes(
+  formula = Y ~ X, 
+  data = donnees
+)
+```
+
+On peut utiliser ce modèle pour effectuer des prédictions sur le jeu de données de test et ainsi mesurer l'erreur sur des données non utilisées pour apprendre les probabilités $\widehat{P}(Y=y|X=x)$.
+
+```{r nb_pred}
+naive_bayes_pred <- predict(naive_bayes_model, test)
+```
+
+Comme précédemment on peut mesurer la précision du modèle ainsi que son erreur de la façon suivante.
+
+```{r nb_pred_perf, eval = FALSE}
+# Taux de bonnes prédictions
+sum(naive_bayes_pred$class == test$Y) / n_test
+
+# Taux d'erreur
+1 - sum(naive_bayes_pred$class == test$Y) / n_test
+```
+
+Le taux d'erreur est de `r 1 - sum(naive_bayes_pred$class == test$Y) / n_test`.
+
+#### Le choix des paramètres
+
+Le modèle bayésien naïf a été lancé avec ses paramètres par défaut. 3 hyper-paramètres peuvent être modifiés : 
+
+* l'utilisation ou non d'un noyau pour estimer les densités des variables numériques, `usekernel`
+* la largeur de bande utilisée par le noyau (ou plus précisément un facteur multiplicatif qui sera appliqué à une largeur de bande pré-définie), `adjust`
+* la correction de Laplace à applique pour les variables catégorielles, `fL`.
+
+Pour choisir la meilleure combinaison d'hyper-paramètres pour le modèle bayésien naïf, on va diviser notre jeu de données en 2 groupes : apprentissage et validation. Comme pour le choix de $k$ dans le modèle des $k$ plus-proches-voisins, le but est d'estimer l'erreur sur les données de validation pour chaque combinaison d'hyper-paramètres et de sélectionner la combinaison avec l'erreur la plus faible. 
+
+Pour ce faire on utilise la libraire `caret` qui comporte un ensemble de fonction facilitant la création de pipelines d'entraînement en apprentissage supervisé. [Ce livre en ligne](https://topepo.github.io/caret/) et [cette vignette d'introduction](https://cran.r-project.org/web/packages/caret/vignettes/caret.html) donnent une bonne vision du fonctionnement de ce package. 
+
+On commence par spécifier l'ensemble des combinaisons d'hyper-paramètres que l'on souhaite évaluer. Parmi les 3 hyper-paramètres nécessaires seuls 2 seront utilisés dans notre cas : `usekernel` et `adjust`. En effet la correction de Laplace sert pour les variables catégorielles or notre jeu de données ne comporte que des données numériques. 
+
+```{r nb_param_grid}
+hyperparam_grid <- expand.grid(
+  usekernel = c(TRUE, FALSE), # si vrai utilisation d'un noyau sinon densité gaussienne
+  fL = 0,
+  adjust = seq(1, 5, by = 1) # largeur de bande du noyau
+)
+```
+
+On définit ensuite le type de division apprentissage/validation souhaité. Ici on choisit la validation croisée 5-blocks.
+
+```{r nb_control}
+control <- trainControl(method = "cv", number = 5)
+```
+
+On peut ensuite entraîner le modèle avec la fonction `caret::train()`. Un modèle par combinaison sera entraîné et l'erreur sera calculée sur l'échantillon de validation.
+
+```{r nb_train}
+naive_bayes <- train(
+  x = donnees[, "X", drop = FALSE], # prédicteurs
+  y = donnees$Y, # réponse
+  method = "nb", # classifieur utilisé, ici Naive Bayes
+  trControl = control, # méthode d'échantillonnage, ici 5-fold CV
+  tuneGrid = hyperparam_grid # combinaisons d'hyper-paramètres à évaluer
+)
+```
+
+On peut visualiser les résultat sous forme graphique pour choisir la combinaison d'hyper-paramètres donnant le meilleur résultat.
+
+```{r nb_train_plot}
+ggplot(
+  data = naive_bayes$results,
+  mapping = aes(x = adjust, y = Accuracy, color = usekernel)
+) + 
+  geom_line() + 
+  geom_point() + 
+  labs(
+    x = "Largeur de bande",
+    y = "Précision",
+    title = "Comparaison des hyper-paramètres",
+    color = "Utilisation d'un noyau ?"
+  ) + 
+  theme(
+    legend.position = c(.2, .22)
+  )
+```
+
+Le meilleur modèle est obtenu avec l'utilisation d'un noyau pour estimer la densité et une largeur de bande de 1 (plus précisément un facteur multiplicatif de la largeur de bande de 1).
+
+On va donc utiliser ces hyper-paramètres pour effectuer une prédiction sur les données de test et ainsi mesurer l'erreur de généralisation du modèle bayésien naïf. La fonction `caret::predict()` va utiliser directement le résultat de la fonction `caret::train()` et donc les meilleurs hyper-paramètres.
+
+```{r nb_predict}
+naive_bayes_pred <- predict(
+  object = naive_bayes, 
+  newdata = test
+)
+```
+
+Comme précédemment on calcule l'erreur de généralisation. On obtient `r 1 - sum(naive_bayes_pred == test$Y) / n_test`.
+
+```{r nb_error, eval = FALSE}
+sum(naive_bayes_pred == test$Y) / n_test
+1 - sum(naive_bayes_pred == test$Y) / n_test
+```
+
+
+# Exercice 2 - Discrimination à plusieurs classes
+
+## Question 1
+
+>_Charger la table Vehicle après avoir chargé le package `mlbench`. Lire la description de la table. Combien de prédicteurs potentiels dans cette table ?_
+
+
+
+<br>
+
+<cite> -- Mathieu Marauri</cite>
