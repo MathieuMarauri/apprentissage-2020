@@ -1,0 +1,14 @@
+# R files
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+
+# test file
+*test.R
+
+# mac DS_store files
+*.DS_store
+
+# html output files
+*.html
