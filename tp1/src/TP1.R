@@ -250,7 +250,7 @@ rm(list = ls())
 # Importer le dataset vehicule et avoir un aperçu des données
 data(Vehicle)
 summary(Vehicle)
-skim(Vehicle)
+# skim(Vehicle)
 
 # On décompose la base en un échantillon d'apprentissage et un échantillon de test
 set.seed(123456)
