@@ -17,7 +17,7 @@ library("knitr")
 opts_chunk$set(echo = TRUE, eval = TRUE, warning = FALSE, message = FALSE, cache = FALSE, fig.align = 'center', dpi = 300, out.width = '75%')
 ```
 
-Les différentes librairies qui seront utilisés pour ce TP sont listés ici. Le code pour générer ce document ainsi que le code R qui a servi de base peuvent être trouvé [ici](https://github.com/MathieuMarauri/apprentissage-2020/blob/master/tp1/output/correction.Rmd) et [là](https://github.com/MathieuMarauri/apprentissage-2020/blob/master/tp1/src/TP1.R).
+Les différentes librairies qui seront utilisés pour ce TP sont listées ici. Le code pour générer ce document ainsi que le code R qui a servi de base peuvent être trouvés [ici](https://github.com/MathieuMarauri/apprentissage-2020/blob/master/tp1/output/correction.Rmd) et [là](https://github.com/MathieuMarauri/apprentissage-2020/blob/master/tp1/src/TP1.R).
 
 ```{r librairies}
 library("caret") # ensemble de meta-fonctions nécessaires au processus d'apprentissage supervisé
@@ -58,11 +58,11 @@ scale_fill_discrete <- function(...) ggplot2::scale_fill_viridis_d(..., option =
 ```
 
 
-# Exercice 1 - Règles et risque de Bayes en discrimination binaire
+# Exercice 1 - Règle et risque de Bayes en discrimination binaire
 
-Voici 3 problèmes de discrimination binaire : dans chaque cas on a simulé un échantillon de taille $n = 1000$.
+Voici 3 problèmes de discrimination binaire, dans chaque cas on a simulé un échantillon de taille $n = 1000$.
 
-_Cas 1_ 
+__Cas 1__
 
 Pour $i = 1..1000$, $X_i \sim \mathcal{N}(0, 1)$, $U_i \sim \mathcal{U}[0, 1]$ on a :
 
@@ -72,7 +72,7 @@ Y_i = \begin{cases}
       \mathbb{1}_{U_i > 0,2} & \text{si $X_i > 0$}\\
     \end{cases}
 $$
-_Cas 2_ 
+__Cas 2__
 
 Pour $i = 1..1000$, $X_i \sim \mathcal{N}(0, 1)$, $U_i \sim \mathcal{U}[0, 1]$ on a :
 
@@ -83,7 +83,7 @@ Y_i = \begin{cases}
     \end{cases}
 $$
 
-_Cas 3_
+__Cas 3__
 
 On travaille sur des données réelles issues d'une enquête, à partir d'un échantillon tiré au hasard de $n=1000$ consommateurs de café. La variable à expliquer $Y$ est qualitative binaire et prend les modalités "sucré" et "non sucré". La variable explicative à notre disposition est $X$ qui représente le sexe. On dispose de la table avec en lignes les 1000 consommateurs et en colonnes les 2 variables $X$ et $Y$. Des résultats de statistique bivariée nous donnent :
 
@@ -106,12 +106,13 @@ $$
 \end{align*}
 $$
 
-_Cas 1_
+__Cas 1__
 
-On définie la règle de Bayes en calculant $P(Y=1|X_i=x_i)$ selon les valeurs de $X$.
+On définie la règle de Bayes en calculant $P(Yi=1|X_i=x_i)$ selon les valeurs de $X$.
 
-Pour $X_i \leq 0$ : $P(Y=1|X_i=x_i)=P(U_i \leq 0,1) = 0,1$ d'où $f^*(x_i) = 0$.
-Pour $X_i > 0$ : $P(Y=1|X_i=x_i)=P(U_i > 0,2) = 1 - P(U_i \leq 0,2) = 0,8$ d'où $f^*(x_i) = 1$.
+Pour $X_i \leq 0$ : $P(Y_i=1|X_i=x_i)=P(U_i \leq 0,1) = 0,1$ d'où $f^*(x_i) = 0$.
+
+Pour $X_i > 0$ : $P(Yi=1|X_i=x_i)=P(U_i > 0,2) = 1 - P(U_i \leq 0,2) = 0,8$ d'où $f^*(x_i) = 1$.
 
 La règle de Bayes est donc : 
 
@@ -122,7 +123,7 @@ f^*(x) = \begin{cases}
     \end{cases}
 $$
 
-On calcule maintenant l'erreur de Bayes. Elle correspond à la différence entre la prédiction obtenue avec la règle de Bayes de Bayes, $f^*(x)$, et la vraie valeur, $Y$.
+On calcule maintenant l'erreur de Bayes. Elle correspond à la différence entre la prédiction obtenue avec la règle de Bayes, $f^*(X)$, et la vraie valeur, $Y$.
 
 $$
 \begin{split}
@@ -135,12 +136,13 @@ $$
 \end{split}
 $$
 
-_Cas 2_
+__Cas 2__
 
-On définie la règle de Bayes en calculant $P(Y=1|X_i=x_i)$ selon les valeurs de $X$.
+On définie la règle de Bayes en calculant $P(Yi=1|X_i=x_i)$ selon les valeurs de $X$.
 
-Pour $X_i \leq 0$ : $P(Y=1|X_i=x_i)=P(U_i \leq 0,2) = 0,2$ d'où $f^*(x_i) = 0$.
-Pour $X_i > 0$ : $P(Y=1|X_i=x_i)=P(U_i > 0,4) = 1 - P(U_i \leq 0,4) = 0,6$ d'où $f^*(x_i) = 1$.
+Pour $X_i \leq 0$ : $P(Yi=1|X_i=x_i)=P(U_i \leq 0,2) = 0,2$ d'où $f^*(x_i) = 0$.
+
+Pour $X_i > 0$ : $P(Yi=1|X_i=x_i)=P(U_i > 0,4) = 1 - P(U_i \leq 0,4) = 0,6$ d'où $f^*(x_i) = 1$.
 
 La règle de Bayes est donc : 
 
@@ -151,7 +153,7 @@ f^*(x) = \begin{cases}
     \end{cases}
 $$
 
-On calcule maintenant l'erreur de Bayes. Elle correspond à la différence entre la prédiction obtenue avec la règle de Bayes de Bayes, $f^*(x)$, et la vraie valeur, $Y$.
+On calcule maintenant l'erreur de Bayes. Elle correspond à la différence entre la prédiction obtenue avec la règle de Bayes, $f^*(X)$, et la vraie valeur, $Y$.
 
 $$
 \begin{split}
@@ -164,7 +166,7 @@ $$
 \end{split}
 $$
 
-_Cas 3_
+__Cas 3__
 
 Comme la loi jointe de $(X, Y)$ n'est pas connue il est impossible de connaître la règle de Bayes et donc l'erreur de Bayes.
 
@@ -201,14 +203,14 @@ Y1[X > 0 & U > 0.4] <- 1
 Y <- as.factor(Y1)
 
 # Créer un data.frame avec X et Y
-donnees <- data.frame(X, Y)
+data <- data.frame(X, Y)
 ```
 
 Sur le graphe suivant on peut voir la densité de $X$ selon la valeur prise par $Y$.
 
 ```{r simul_plot}
 ggplot(
-  data = donnees,
+  data = data,
   mapping = aes(x = X, fill = Y)
 ) +
   geom_density(
@@ -288,9 +290,9 @@ On commence par lancer un modèle de k plus-proches-voisins avec un choix arbitr
 ```{r knn}
 set.seed(123456)
 knn_pred <- knn(
-  train = as.matrix(donnees$X), # données d'apprentissage
+  train = as.matrix(data$X), # données d'apprentissage
   test = as.matrix(test$X), # données à prédire
-  cl = donnees$Y, # vraies valeurs
+  cl = data$Y, # vraies valeurs
   k = 10 # nombre de voisins
 )
 ```
@@ -318,8 +320,8 @@ La valeur de $k$ a été définie de façon arbitraire, on peut optimiser ce cho
 
 ```{r knn_tune}
 knn_cross_results <- tune.knn(
-  x = donnees$X, # predicteurs
-  y = donnees$Y, # réponse
+  x = data$X, # predicteurs
+  y = data$Y, # réponse
   k = 1:50, # essayer knn avec K variant de 1 à 50
   tunecontrol = tune.control(sampling = "cross"), # utilisation de la cross validation
   cross = 5 # 5 blocks
@@ -342,7 +344,7 @@ ggplot(
   )
 ```
 
-Le meilleur $k$ est obtenu avec la commande `knn_cross_results$best.parameters$k` : `r knn_cross_results$best.parameters$k`. De cette manière le choix de $k$ n'est plus arbitraire mais basé sur nos données et le $k$ donnant l'erreur minimale (sur les données d'apprentissage) est choisie. 
+Le meilleur $k$ est obtenu avec la commande `knn_cross_results$best.parameters$k` : `r knn_cross_results$best.parameters$k`. De cette manière le choix de $k$ n'est plus arbitraire mais basé sur nos données et le $k$ donnant l'erreur minimale (sur les données de validation) est choisie. 
 
 _Remarque : la valeur optimale de $k$ peut varier à chaque fois que la commande est lancée. On verra dans l'exercice suivant comment on peut contourner ce problème._
 
@@ -351,9 +353,9 @@ On peut relancer la prédiction avec le $k$ sélectionné et calculer le taux d'
 ```{r knn_opt}
 set.seed(123456)
 knn_pred <- knn(
-  train = as.matrix(donnees$X), # données d'apprentissage
+  train = as.matrix(data$X), # données d'apprentissage
   test = as.matrix(test$X), # données à prédire
-  cl = donnees$Y, # vraies valeurs
+  cl = data$Y, # vraies valeurs
   k = knn_cross_results$best.parameters$k # nombre de voisins
 )
 ```
@@ -362,7 +364,7 @@ L'erreur est de `r 1 - sum(knn_pred == test$Y) / n_test`.
 
 #### Analyse de l'erreur
 
-L'erreur obtenue est très proche de l'erreur de Bayes calculée à la question 1. Cela est due au fait que les données générées ne correspondent pas parfaitement à la loi définie dans l'énoncé du fait du faible nombre d'observations simulées (200). On peut simuler un nombre supérieur de données, 2000 par exemple, et recalculer l'erreur. Pour ce faire on procède comme précédemment. 
+L'erreur obtenue est très proche de l'erreur de Bayes calculée à la question 1. (Pour $k=30$, avec les mêmes graines, l'erreur est inférieure au risque de Bayes). Cela est due au fait que les données générées ne correspondent pas parfaitement à la loi définie dans l'énoncé du fait du faible nombre d'observations simulées (200). On peut simuler un nombre supérieur de données, 2000 par exemple, et recalculer l'erreur. Pour ce faire on procède comme précédemment. 
 
 ```{r knn_2000}
 n_test2 <- 2000
@@ -377,9 +379,9 @@ Y <- as.factor(Y2)
 test2 <- data.frame(X, Y)
 set.seed(123456)
 knn_pred2 <- knn(
-  train = as.matrix(donnees$X), # données d'apprentissage
+  train = as.matrix(data$X), # données d'apprentissage
   test = as.matrix(test2$X), # données à prédire
-  cl = donnees$Y, # vraies valeurs
+  cl = data$Y, # vraies valeurs
   k = knn_cross_results$best.parameters$k # nombre de voisins
 )
 ```
@@ -398,6 +400,7 @@ $$
 P(Y=y|X=x) = \frac{P(Y=y) \times P(X=x|Y=y)}{P(X=x)}
 $$
 
+
 #### La règle de décision
 
 Avec le modèle bayésien naïf on calcule $\widehat{P}(Y=y|X=x)$ pour $y=0, 1$. Pour choisir la classe $Y$ on va prendre la probabilité la plus forte, c'est à dire celle qui est supérieur à $0,5$.
@@ -412,7 +415,7 @@ La fonction utilisée pour réaliser un modèle bayésien naïf est la fonction 
 ```{r nb}
 naive_bayes_model <- NaiveBayes(
   formula = Y ~ X, 
-  data = donnees
+  data = data
 )
 ```
 
@@ -443,9 +446,9 @@ Le modèle bayésien naïf a été lancé avec ses paramètres par défaut. 3 hy
 
 * l'utilisation ou non d'un noyau pour estimer les densités des variables numériques, `usekernel`
 * la largeur de bande utilisée par le noyau (ou plus précisément un facteur multiplicatif qui sera appliqué à une largeur de bande pré-définie), `adjust`
-* la correction de Laplace à applique pour les variables catégorielles, `fL`.
+* la correction de Laplace à appliquer pour les variables catégorielles, `fL`.
 
-Pour choisir la meilleure combinaison d'hyper-paramètres pour le modèle bayésien naïf, on va diviser notre jeu de données en 2 groupes : apprentissage et validation. Comme pour le choix de $k$ dans le modèle des $k$ plus-proches-voisins, le but est d'estimer l'erreur sur les données de validation pour chaque combinaison d'hyper-paramètres et de sélectionner la combinaison avec l'erreur la plus faible. 
+Pour choisir la meilleure combinaison d'hyper-paramètres pour le modèle bayésien naïf, on va diviser notre jeu de données, `data`, en 2 groupes : apprentissage et validation. Comme pour le choix de $k$ dans le modèle des $k$ plus-proches-voisins, le but est d'estimer l'erreur sur les données de validation pour chaque combinaison d'hyper-paramètres et de sélectionner la combinaison avec l'erreur la plus faible. 
 
 On commence par spécifier l'ensemble des combinaisons d'hyper-paramètres que l'on souhaite évaluer. Parmi les 3 hyper-paramètres nécessaires seuls 2 seront utilisés dans notre cas : `usekernel` et `adjust`. En effet la correction de Laplace sert pour les variables catégorielles or notre jeu de données ne comporte que des données numériques. 
 
@@ -456,20 +459,19 @@ hyperparam_grid <- expand.grid(
   adjust = seq(1, 5, by = 1) # largeur de bande
 )
 hyperparam_grid <- rbind(hyperparam_grid, data.frame(usekernel = FALSE, fL = 0, adjust = 1))
-
 ```
 
 On construit ensuite la séparation entre données d'apprentissage et de validation.
 
 ```{r nb_split}
 set.seed(123456)
-train_index <- sample(1:nrow(donnees), size = nrow(donnees) * .8)
-validation_index <- setdiff(1:nrow(donnees), train_index)
-train <- donnees[train_index, ]
-validation <- donnees[validation_index, ]
+train_index <- sample(1:nrow(data), size = nrow(data) * .8)
+validation_index <- setdiff(1:nrow(data), train_index)
+train <- data[train_index, ]
+validation <- data[validation_index, ]
 ```
 
-On va maintenant entraêner autant de modèles qu'il y a de combinaisons et calculer l'erreur sur les données de validation pour chacun de ces modèles.
+On va maintenant entraîner autant de modèles qu'il y a de combinaisons et calculer l'erreur sur les données de validation pour chacun de ces modèles.
 
 ```{r nb_train}
 results <- cbind(hyperparam_grid, "error" = 0)
@@ -511,12 +513,12 @@ ggplot(
 
 Le meilleur modèle est obtenu avec l'utilisation d'un noyau pour estimer la densité et une largeur de bande de 1 (plus précisément un facteur multiplicatif de la largeur de bande de 1).
 
-On va donc utiliser ces hyper-paramètres pour effectuer une prédiction sur les données de test et ainsi mesurer l'erreur de généralisation du modèle bayésien naïf. 
+On va donc utiliser ces hyper-paramètres pour effectuer une prédiction sur les données de test et ainsi mesurer l'erreur de généralisation du modèle bayésien naïf. Pour ce faire on va entraîner le modèle avec les hyper-paramètres sélectionnés sur l'ensemble des données train + validation puis effectuer une prédiction sur les données de test.
 
 ```{r nb_predict}
 naive_bayes_model <- NaiveBayes(
   formula = Y ~ X,
-  data = train,
+  data = data,
   usekernel = TRUE,
   fL = 0,
   adjust = 1
@@ -536,7 +538,7 @@ sum(naive_bayes_pred$class == test$Y) / n_test
 
 #### Analyse de l'erreur
 
-On remarque que l'erreur de validation et l'erreur de test sont différentes. On a choisi les hyper-paramètres les plus performants sur le jeu de validation. Ce sont sur ces données que cette combinaison est la meilleure. Le hasard fait que sur d'autres données l'erreur est supérieure. On pourra essayer de corriger ce problème en faisant de la validation croisée dans le prochain exercice. 
+On remarque que l'erreur de validation et l'erreur de test sont légèrement différentes. Les données sur lesquelles l'estimation de l'erreur a été faite sont différentes : les données de validation, sur lesquelles on a choisi les meilleurs hyper-paramètres, et les données de test.
 
 # Exercice 2 - Discrimination à plusieurs classes
 
@@ -609,7 +611,7 @@ kable(
   kable_styling(full_width = FALSE)
 ```
 
-On utilise la valeur la plus fréquente pour construire notre modèle de plus-proches-voisins et ainsi mesurer l'erreur sur l'échantillon de test. 
+On utilise la valeur la plus fréquente pour construire notre modèle de plus-proches-voisins et ainsi mesurer l'erreur sur l'échantillon de test. Le modèle est aussi entrainé sur les données de validation 
 
 ```{r vehicule_knn}
 set.seed(123456)
@@ -639,10 +641,11 @@ On définit l'ensemble des combinaisons à tester.
 
 ```{r vehicule_nb_param_grid}
 hyperparam_grid <- expand.grid(
-  usekernel = c(TRUE, FALSE), # si vrai utilisation d'un noyau sinon densité gaussienne
-  fL = 0,
-  adjust = seq(1, 5, by = 1) # largeur de bande du noyau
+  usekernel = TRUE, # si vrai utilisation d'un noyau sinon gaussien
+  fL = 0, # correction avec lissage de Laplace (ici ce paramètre n'est pas nécessaire, x étant continue)
+  adjust = seq(1, 5, by = 1) # largeur de bande
 )
+hyperparam_grid <- rbind(hyperparam_grid, data.frame(usekernel = FALSE, fL = 0, adjust = 1))
 ```
 
 On va définir la façon de séparer les données en apprentissage et validation avec la fonction `caret::trainControl()`. On spécifie l'argument `method` à `"cv"` pour faire de la validation croisée et l'argument `number` à `5` pour faire du 5-blocks.
@@ -700,12 +703,11 @@ naive_bayes_pred <- predict(
 )
 ```
 
-
 L'erreur de généralisation est de `r round(1 - sum(naive_bayes_pred == test[, "Class"]) / length(test_index), digits = 3)`. 
 
 #### Pourquoi des _warnings_ ?
 
-On peut remarquer que la fonction `predict()` génère des messages de _warning_ `Numerical 0 probability for all classes with observation`. Cela veut dire que les 4 probabilités initialement calculées par le modèle sont toutes très faibles. Leur comparaison n'est donc peut-être pas pertinentes. La fonction renvoie des probabilités normalisées donc ces faibles valeurs n'appariassent pas lorque qu'on regarde les résultats du modèle (utiliser la commande `predict(naive_bayes, test, type = "prob")` pour avoir les probabilités et non pas les classes directement).
+On peut remarquer que la fonction `predict()` génère des messages de _warning_ `Numerical 0 probability for all classes with observation`. Cela veut dire que les 4 probabilités initialement calculées par le modèle sont toutes très faibles. Leur comparaison n'est donc peut-être pas pertinentes. La fonction renvoie des probabilités normalisées donc ces faibles valeurs n'appariassent pas lorsque qu'on regarde les résultats du modèle (utiliser la commande `predict(naive_bayes, test, type = "prob")` pour avoir les probabilités et non pas les classes directement).
 
 
 
