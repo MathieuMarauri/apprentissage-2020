@@ -10,7 +10,7 @@ output:
     css: style.css
 ---
 
-TODO : explication estimation densité ; explication validation / apprentissage / test ; mlr3
+TODO : explication estimation densité ; explication validation / apprentissage / test ; mlr3 ; NB exo 2 best model ; exo 3 ; scale => utiliser valeur de train pour le test
 
 ```{r initial_chunk, echo = FALSE, warning = FALSE, message = FALSE}
 library("knitr")
@@ -608,6 +608,7 @@ for (i in 1:20) {
 }
 ```
 
+
 ```{r tune_knn_loop_table, echo = FALSE}
 table <- t(as.data.frame(table(best_k)))
 rownames(table) <- c("Valeur de K", "Nombre d'occurences")
@@ -753,6 +754,16 @@ La variable à expliquer est _price_.
 
 >_Quelles variables explicatives proposez-vous d'utiliser si vous êtes un particulier et que vous souhaitez prédire à quel prix vous pourriez proposer votre logement en Airbnb en vous positionnant "au prix du marché"._
 
+On commence par importer les données. 
+
+```{r airbnb_import, eval = FALSE}
+airbnb <- read.csv(file = "data/AB_NYC_2019.csv")
+```
+
+```{r airbnb_import2, echo = FALSE}
+airbnb <- read.csv(file = "../data/AB_NYC_2019.csv")
+```
+
 Ici les seuls régresseurs utilisables pour un particulier qui n’est pas encore inscrit sur
 Airbnb sont les variables de localisation (peut-être une sélection parmi les 4), et le type
 de logement (room_type). La variable à prédire est, cette fois, une variable quantitative
@@ -762,7 +773,87 @@ de logement (room_type). La variable à prédire est, cette fois, une variable q
 
 >_Quelle fonction de coût utiliser ?_
 
+On est ici dans le cas d'une régression (variable cible quantitative), c'est donc la perte quadratique qui sera utilisée : 
 
+$$
+\mathscr{L}(Y, \widehat{Y}) = |Y-\widehat{Y}|^2
+$$
+Il s'agit simplement de la racine carrée de la moyenne des erreurs au carré. Pour estimer cette erreur on va diviser les données en un ensemble d'apprentissage et un ensemble de test. 
+
+```{r airbnb_split}
+set.seed(123456)
+train_index <- sample(1:nrow(airbnb), size = nrow(airbnb) * .7)
+test_index <- setdiff(1:nrow(airbnb), train_index)
+train <- airbnb[train_index, ]
+test <- airbnb[test_index, ]
+```
+
+
+## Question 3 - Knn
+
+>_Quelle est la règle de décision associée à l'algorithme des k plus proches voisins ? Mettre en œuvre les k plus proches voisins. Justifier le choix des paramètres et commenter les résultats._
+
+Parmi les variables explicatives à notre disposition on a : 
+
+* `neighbourhood_group` : catégorielle à 5 modalités
+* `neighbourhood` : catégorielle à 221 modalités
+* `latitude` : numérique
+* `longitude` : numérique
+* `room_type` : catégorielle à 3 modalités
+
+Il y a donc à la fois des variables continues et des variables catégorielles. On ne peut pas intégrer directement ces données dans l'algorithme KNN. En effet la distance utilisée par défaut est la distance euclidienne, or celle-ci s'applique uniquement aux données continues. 
+
+Plusieurs solutions sont possibles : 
+
+* Effectuer une ACM pour transformer les variables catégorielles en variables continues
+* Utiliser la distance de Hamming qui est applicable pour tout type de données (ou tout autre distance avec les mêmes propriétés)
+* Encoder les variables catégorielles en variables numériques
+* Utiliser uniquement les variables continues
+
+#### Variables continues uniquement
+
+On va construire le modèle de k plus-proches-voisins en se basant uniquement sur les variables `latitude`et `longitude`. Comme précédemment on va tester différentes valeurs de $k$ pour choisir la meilleure valeur. Le choix de la plage de valeurs à tester peut se faire de manière itérative. On commence par un ensemble de valeurs larges puis on peut réduire petit à petit. 
+
+```{r airbnb_knn_num_hyper}
+knn_fit <- train(
+  x = train[, c("latitude", "longitude")], # prédicteurs
+  y = train[, "price"], # réponse
+  tuneGrid = data.frame(k = seq(100, 200, by = 10)), # nombre de voisins
+  method = "knn", # knn classifieur
+  trControl = trainControl(method = "cv", number = 5) # 5-fold CV
+)
+```
+
+On peut voir les résultats sur le graphique suivant.
+
+```{r airbnb_knn_num_plot}
+ggplot(
+  data = knn_fit$results,
+  mapping = aes(x = k, y = RMSE)
+) +
+  geom_line() +
+  geom_point() +
+  labs(
+    x = "Valeurs de k",
+    y = "Erreur quadratique",
+    title = "Evaluation de l'erreur sur données de validation"
+  )
+```
+
+On utilise ensuite les données de test pour calculer l'erreur de généralisation. 
+
+```{r airbnb_knn_num_pred}
+knn_pred <- predict(
+  object = knn_fit,
+  newdata = test
+)
+```
+
+L'erreur est obtenue avec la commande suivante `sqrt(mean((knn_pred - test$price)^2))`. Elle est de `r round(sqrt(mean((knn_pred - test$price)^2)), digits = 3)`.
+
+#### Variables catégorielles encodées
+
+Les 3 variables catégorielles vont être encodées en variables continues. Les modalités sont transformées en nombre. Il faut essayer de faire en sorte de ranger les modalités par ordre d'importance si possible. 
 
 <br>
 
