@@ -2,13 +2,15 @@
 title: "Apprentissage supervisé - TP1"
 output:
   html_document:
-    code_folding: show
+    code_folding: none
     toc: true
     toc_depth: 2
     theme: cerulean
     highlight: tango
     css: style.css
 ---
+
+TODO : explication estimation densité ; explication validation / apprentissage / test ; mlr3
 
 ```{r initial_chunk, echo = FALSE, warning = FALSE, message = FALSE}
 library("knitr")
@@ -58,13 +60,11 @@ scale_fill_discrete <- function(...) ggplot2::scale_fill_viridis_d(..., option =
 
 # Exercice 1 - Règles et risque de Bayes en discrimination binaire
 
-TODO : correction première question ; explication estimation densité ; explication validation / apprentissage / test ; mlr3 ; naive bayes sans caret ; grid plus courte pour NB
-
 Voici 3 problèmes de discrimination binaire : dans chaque cas on a simulé un échantillon de taille $n = 1000$.
 
 _Cas 1_ 
 
-Pour $i = 1..1000$, $X_i  \mathcal{N}(0, 1)$, $U_i \mathcal{U}[0, 1]$ on a :
+Pour $i = 1..1000$, $X_i \sim \mathcal{N}(0, 1)$, $U_i \sim \mathcal{U}[0, 1]$ on a :
 
 $$
 Y_i = \begin{cases}
@@ -72,10 +72,9 @@ Y_i = \begin{cases}
       \mathbb{1}_{U_i > 0,2} & \text{si $X_i > 0$}\\
     \end{cases}
 $$
-
 _Cas 2_ 
 
-Pour $i = 1..1000$, $X_i  \mathcal{N}(0, 1)$, $U_i \mathcal{U}[0, 1]$ on a :
+Pour $i = 1..1000$, $X_i \sim \mathcal{N}(0, 1)$, $U_i \sim \mathcal{U}[0, 1]$ on a :
 
 $$
 Y_i = \begin{cases}
@@ -94,6 +93,80 @@ On travaille sur des données réelles issues d'une enquête, à partir d'un éc
 ## Question 1 - Règle de Bayes
 
 >_Donner dans chacun des trois cas, si c'est possible, la règle de Bayes et le risque de Bayes._
+
+Dans le cas de la discrimination binaire la règle de Bayes est de la forme suivante : 
+
+$$
+\begin{align*}
+  f^*(x) \colon \mathbb{R} &\to \{0, 1\}\\
+  x &\mapsto f^*(x) = \begin{cases}
+      1 & \text{si $P(Y=y|X=x) > 0,5$}\\
+      0 & \text{sinon}\\
+    \end{cases}
+\end{align*}
+$$
+
+_Cas 1_
+
+On définie la règle de Bayes en calculant $P(Y=1|X_i=x_i)$ selon les valeurs de $X$.
+
+Pour $X_i \leq 0$ : $P(Y=1|X_i=x_i)=P(U_i \leq 0,1) = 0,1$ d'où $f^*(x_i) = 0$.
+Pour $X_i > 0$ : $P(Y=1|X_i=x_i)=P(U_i > 0,2) = 1 - P(U_i \leq 0,2) = 0,8$ d'où $f^*(x_i) = 1$.
+
+La règle de Bayes est donc : 
+
+$$
+f^*(x) = \begin{cases}
+      1 & \text{si $x > 0$}\\
+      0 & \text{sinon}\\
+    \end{cases}
+$$
+
+On calcule maintenant l'erreur de Bayes. Elle correspond à la différence entre la prédiction obtenue avec la règle de Bayes de Bayes, $f^*(x)$, et la vraie valeur, $Y$.
+
+$$
+\begin{split}
+\mathcal{R}^* & = P(Y \neq f^*(X)) \\
+& = P(Y = 1 \cap f^*(X) = 0) + P(Y = 0 \cap f^*(X) = 1) \\
+& = P(Y = 1 \cap X \leq 0) + P(Y = 0 \cap X > 0) \\
+& = P(X \leq 0) \times P(Y = 1 | X \leq 0) + P(X > 0) \times P(Y = 0 | X > 0) \\
+& = 0,5 \times 0,1 + 0,5 \times 0,2 \\
+& = 0,15
+\end{split}
+$$
+
+_Cas 2_
+
+On définie la règle de Bayes en calculant $P(Y=1|X_i=x_i)$ selon les valeurs de $X$.
+
+Pour $X_i \leq 0$ : $P(Y=1|X_i=x_i)=P(U_i \leq 0,2) = 0,2$ d'où $f^*(x_i) = 0$.
+Pour $X_i > 0$ : $P(Y=1|X_i=x_i)=P(U_i > 0,4) = 1 - P(U_i \leq 0,4) = 0,6$ d'où $f^*(x_i) = 1$.
+
+La règle de Bayes est donc : 
+
+$$
+f^*(x) = \begin{cases}
+      1 & \text{si $x > 0$}\\
+      0 & \text{sinon}\\
+    \end{cases}
+$$
+
+On calcule maintenant l'erreur de Bayes. Elle correspond à la différence entre la prédiction obtenue avec la règle de Bayes de Bayes, $f^*(x)$, et la vraie valeur, $Y$.
+
+$$
+\begin{split}
+\mathcal{R}^* & = P(Y \neq f^*(X)) \\
+& = P(Y = 1 \cap f^*(X) = 0) + P(Y = 0 \cap f^*(X) = 1) \\
+& = P(Y = 1 \cap X \leq 0) + P(Y = 0 \cap X > 0) \\
+& = P(X \leq 0) \times P(Y = 1 | X \leq 0) + P(X > 0) \times P(Y = 0 | X > 0) \\
+& = 0,5 \times 0,2 + 0,5 \times 0,4 \\
+& = 0,3
+\end{split}
+$$
+
+_Cas 3_
+
+Comme la loi jointe de $(X, Y)$ n'est pas connue il est impossible de connaître la règle de Bayes et donc l'erreur de Bayes.
 
 ## Question 2 - Complexité
 
@@ -181,13 +254,31 @@ ggplot(
 
 >_Quelle est la règle de décision associée à l'algorithme des k plus proches voisins ? Mettre en oeuvre les k plus proches voisins. Justifier le choix des paramètres et commenter les résultats en validation et sur l'échantillon test._
 
+#### Le modèle KNN
+
+Le modèle des $K$ plus-proches-voisins (_K-nearest-neighbours_ en anglais) est un modèle d'apprentissage supervisé utilisable en classification et en régression. Son principe est simple. Pour prédire la classe d'une nouvelle observation, on calcule la distance qui sépare ce nouveau point de tous les points des données d'apprentissage, on sélectionne les $k$ points les plus proches puis on détermine la classe à prédire en faisant un vote à la majorité. 
+
+<div style="text-align:center">
+![](images/knn.png)
+</div>
+
+_Quelques points d'attention :_
+
+* L'hyper-paramètre $k$ est bien sûr l'élément central de ce modèle. Il faut choisir sa valeur de manière réfléchie (on verra dans la suite comment procéder). 
+* La distance utilisée est aussi un point important. On choisira souvent la distance euclidienne mais il est bon de savoir qu'on peut utiliser n'importe quelle mesure de similarité selon les besoins. 
+* Enfin il faut savoir que plus il y a de prédicteurs plus les plus proches voisins seront potentiellement éloignés, c'est ce que l'on appelle le fléau de la dimension. 
+
+<div style="text-align:center">
+![](images/curse.png)
+</div>
+
 #### La règle de décision
 
 Dans le cas d'une classification, la règle de décision associée aux $k$ plus-proches-voisins est le vote à la majorité. Pour $k=5$ par exemple, si 3 voisins ont $Y=0$ et 2 voisins ont $Y=1$ alors la prédiction sera $\widehat{Y}=0$.
 
 #### Un premier modèle
 
-On commence par lancer un modèle de k plus-proches-voisins avec un choix arbitraire pour $k$, 10 par exemple. Pour des questions de reproductibilité on fixe là aussi une seed. On utilise la fonction `class::knn()` qui prend 4 paramètres en entrée : 
+On commence par lancer un modèle de k plus-proches-voisins avec un choix arbitraire pour $k$, 10 par exemple. Pour des questions de reproductibilité on fixe là aussi une graîne. On utilise la fonction `class::knn()` qui prend 4 paramètres en entrée : 
 
 * `train` : les prédicteurs des données d'apprentissage,
 * `test` : les prédicteurs des données de tests sur lesquelles se feront les prédictions,
@@ -293,11 +384,21 @@ knn_pred2 <- knn(
 )
 ```
 
-L'erreur est maintenant de `r 1 - sum(knn_pred2 == test2$Y) / n_test2`. Elle est bien supérieur à l'erreur minimale théorique. 
+L'erreur est maintenant de `r 1 - sum(knn_pred2 == test2$Y) / n_test2`. Elle est bien supérieure à l'erreur minimale théorique. 
 
 ## Question 5 - Naive Bayes
 
 >_Quelle est la règle de décision associée au bayésien naïf ? Mettre en oeuvre le Bayésien naïf. Justifier le choix des paramètres et commenter les résultats en validation et sur l'échantillon test._
+
+#### Le modèle bayésien naïf
+
+Ce modèle se base sur la formule de Bayes : 
+
+$$
+P(Y=y|X=x) = \frac{P(Y=y) \times P(X=x|Y=y)}{P(X=x)}
+$$
+
+
 
 #### La règle de décision
 
@@ -320,7 +421,10 @@ naive_bayes_model <- NaiveBayes(
 On peut utiliser ce modèle pour effectuer des prédictions sur le jeu de données de test et ainsi mesurer l'erreur sur des données non utilisées pour apprendre les probabilités $\widehat{P}(Y=y|X=x)$.
 
 ```{r nb_pred}
-naive_bayes_pred <- predict(naive_bayes_model, test)
+naive_bayes_pred <- predict(
+  object = naive_bayes_model, 
+  newdata = test
+)
 ```
 
 Comme précédemment on peut mesurer la précision du modèle ainsi que son erreur de la façon suivante.
@@ -349,70 +453,96 @@ On commence par spécifier l'ensemble des combinaisons d'hyper-paramètres que l
 
 ```{r nb_param_grid}
 hyperparam_grid <- expand.grid(
-  usekernel = c(TRUE, FALSE), # si vrai utilisation d'un noyau sinon densité gaussienne
-  fL = 0,
-  adjust = seq(1, 5, by = 1) # largeur de bande du noyau
+  usekernel = TRUE, # si vrai utilisation d'un noyau sinon gaussien
+  fL = 0, # correction avec lissage de Laplace (ici ce paramètre n'est pas nécessaire, x étant continue)
+  adjust = seq(1, 5, by = 1) # largeur de bande
 )
+hyperparam_grid <- rbind(hyperparam_grid, data.frame(usekernel = FALSE, fL = 0, adjust = 1))
+
 ```
 
-On définit ensuite le type de division apprentissage/validation souhaité. Ici on choisit la validation croisée 5-blocks.
+On construit ensuite la séparation entre données d'apprentissage et de validation.
 
-```{r nb_control}
-control <- trainControl(method = "cv", number = 5)
+```{r nb_split}
+set.seed(123456)
+train_index <- sample(1:nrow(donnees), size = nrow(donnees) * .8)
+validation_index <- setdiff(1:nrow(donnees), train_index)
+train <- donnees[train_index, ]
+validation <- donnees[validation_index, ]
 ```
 
-On peut ensuite entraîner le modèle avec la fonction `caret::train()`. Un modèle par combinaison sera entraîné et l'erreur sera calculée sur l'échantillon de validation.
+On va maintenant entraêner autant de modèles qu'il y a de combinaisons et calculer l'erreur sur les données de validation pour chacun de ces modèles.
 
 ```{r nb_train}
-naive_bayes <- train(
-  x = donnees[, "X", drop = FALSE], # prédicteurs
-  y = donnees$Y, # réponse
-  method = "nb", # classifieur utilisé, ici Naive Bayes
-  trControl = control, # méthode d'échantillonnage, ici 5-fold CV
-  tuneGrid = hyperparam_grid # combinaisons d'hyper-paramètres à évaluer
-)
+results <- cbind(hyperparam_grid, "error" = 0)
+for (i in 1:nrow(results)) {
+  naive_bayes_model <- NaiveBayes(
+    formula = Y ~ X,
+    data = train,
+    usekernel = results$usekernel[i],
+    fL = results$fL[i],
+    adjust = results$adjust[i]
+  )
+  naive_bayes_pred <- predict(
+    object = naive_bayes_model,
+    newdata = validation
+  )
+  results[i, "error"] <- 1 - sum(naive_bayes_pred$class == validation$Y) / length(validation_index)
+}
 ```
 
 On peut visualiser les résultat sous forme graphique pour choisir la combinaison d'hyper-paramètres donnant le meilleur résultat.
 
 ```{r nb_train_plot}
 ggplot(
-  data = naive_bayes$results,
-  mapping = aes(x = adjust, y = Accuracy, color = usekernel)
-) + 
-  geom_line() + 
-  geom_point() + 
+  data = results,
+  mapping = aes(x = adjust, y = error, color = usekernel)
+) +
+  geom_line() +
+  geom_point() +
   labs(
     x = "Largeur de bande",
-    y = "Précision",
+    y = "Erreur",
     title = "Comparaison des hyper-paramètres",
     color = "Utilisation d'un noyau ?"
-  ) + 
+  ) +
   theme(
-    legend.position = c(.2, .22)
+    legend.position = c(.8, .22)
   )
 ```
 
 Le meilleur modèle est obtenu avec l'utilisation d'un noyau pour estimer la densité et une largeur de bande de 1 (plus précisément un facteur multiplicatif de la largeur de bande de 1).
 
-On va donc utiliser ces hyper-paramètres pour effectuer une prédiction sur les données de test et ainsi mesurer l'erreur de généralisation du modèle bayésien naïf. La fonction `caret::predict()` va utiliser directement le résultat de la fonction `caret::train()` et donc les meilleurs hyper-paramètres.
+On va donc utiliser ces hyper-paramètres pour effectuer une prédiction sur les données de test et ainsi mesurer l'erreur de généralisation du modèle bayésien naïf. 
 
 ```{r nb_predict}
+naive_bayes_model <- NaiveBayes(
+  formula = Y ~ X,
+  data = train,
+  usekernel = TRUE,
+  fL = 0,
+  adjust = 1
+)
 naive_bayes_pred <- predict(
-  object = naive_bayes, 
+  object = naive_bayes_model,
   newdata = test
 )
 ```
 
-Comme précédemment on calcule l'erreur de généralisation. On obtient `r 1 - sum(naive_bayes_pred == test$Y) / n_test`.
+Comme précédemment on calcule l'erreur de généralisation. On obtient `r 1 - sum(naive_bayes_pred$class == test$Y) / n_test`.
 
 ```{r nb_error, eval = FALSE}
-sum(naive_bayes_pred == test$Y) / n_test
-1 - sum(naive_bayes_pred == test$Y) / n_test
+sum(naive_bayes_pred$class == test$Y) / n_test
+1 - sum(naive_bayes_pred$class == test$Y) / n_test
 ```
 
+#### Analyse de l'erreur
+
+On remarque que l'erreur de validation et l'erreur de test sont différentes. On a choisi les hyper-paramètres les plus performants sur le jeu de validation. Ce sont sur ces données que cette combinaison est la meilleure. Le hasard fait que sur d'autres données l'erreur est supérieure. On pourra essayer de corriger ce problème en faisant de la validation croisée dans le prochain exercice. 
 
 # Exercice 2 - Discrimination à plusieurs classes
+
+On utilisera les K plus proches voisins et Bayésien naïf pour discriminer les 4 types de véhicules (variable à expliquer à 4 modalités) à l'aide de différentes variables décrivant la silhouette d'un véhicule.
 
 ## Question 1 - Import des données
 
