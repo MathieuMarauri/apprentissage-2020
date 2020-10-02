@@ -9,6 +9,3 @@
 
 # mac DS_store files
 *.DS_store
-
-# html output files
-*.html
