@@ -9,6 +9,7 @@ library("class") # fonction knn
 library("e1071") # librairie nécessaire pour la fonction tune.knn
 library("FNN") # fast KNN
 library("ggplot2") # Data visualisations using the Grammar of Graphics
+library("klaR") # modèle bayésien naif
 library("mlbench") # dataset Vehicle
 library("skimr") # visualisation de l'ensemble d'un dataset
 
@@ -108,6 +109,21 @@ ggplot(
 
 ### Question 4 : K plus proches voisins
 
+# Un premier modèle
+set.seed(123456)
+knn_pred <- knn(
+  train = as.matrix(donnees$X), # données d'apprentissage
+  test = as.matrix(test$X), # données à prédire
+  cl = donnees$Y, # vraies valeurs
+  k = 10 # nombre de voisins
+)
+
+# Taux de bonnes prédictions
+sum(knn_pred == test$Y) / n_test
+
+# Taux d'erreur
+1 - sum(knn_pred == test$Y) / n_test
+
 # On cherche la meilleure valeur de K par cross validation
 knn_cross_ressults <- tune.knn(
   x = donnees$X, # predicteurs
@@ -121,48 +137,48 @@ knn_cross_ressults <- tune.knn(
 summary(knn_cross_ressults)
 plot(knn_cross_ressults)
 
-# Relancer la cross validation plusieurs fois pour déterminer le meilleur K (la valeur peut varier
-# pour chaque lancement de tune.knn)
-best_k <- numeric(length = 20)
-for (i in 1:20) {
-  knn_cross_ressults <- tune.knn(
-    x = donnees$X,
-    y = donnees$Y,
-    k = 1:50,
-    tunecontrol = tune.control(sampling = "cross"),
-    cross = 10
-  )
-  best_k[i] <- knn_cross_ressults$best.parameters[[1]]
-  print(sprintf("Itération %s : meilleur K = %s", i, knn_cross_ressults$best.parameters))
-}
-table(best_k)
+# # Relancer la cross validation plusieurs fois pour déterminer le meilleur K (la valeur peut varier
+# # pour chaque lancement de tune.knn)
+# best_k <- numeric(length = 20)
+# for (i in 1:20) {
+#   knn_cross_ressults <- tune.knn(
+#     x = donnees$X,
+#     y = donnees$Y,
+#     k = 1:50,
+#     tunecontrol = tune.control(sampling = "cross"),
+#     cross = 10
+#   )
+#   best_k[i] <- knn_cross_ressults$best.parameters[[1]]
+#   print(sprintf("Itération %s : meilleur K = %s", i, knn_cross_ressults$best.parameters))
+# }
+# table(best_k)
 
-# On cherche la meilleure valeur de K par bootstrap
-knn.boot <- tune.knn(
-  x = donnees$X, # predicteurs
-  y = donnees$Y, # réponse
-  k = 1:50, # essayer knn avec K variant de 1 à 50
-  tunecontrol = tune.control(sampling = "boot") # utilisation du bootstrap
-)
-
-# Visualiser les résultats pour chaque K
-summary(knn.boot)
-plot(knn.boot)
-
-# Relancer la cross validation plusieurs fois pour déterminer le meilleur K (la valeur peut varier
-# pour chaque lancement de tune.knn)
-best_k <- numeric(length = 20)
-for (i in 1:20) {
-  knn_cross_ressults <- tune.knn(
-    x = donnees$X,
-    y = donnees$Y,
-    k = 1:50,
-    tunecontrol = tune.control(sampling = "boot") # utilisation du bootstrap
-  )
-  best_k[i] <- knn_cross_ressults$best.parameters[[1]]
-  print(sprintf("Itération %s : meilleur K = %s", i, knn_cross_ressults$best.parameters))
-}
-table(best_k)
+# # On cherche la meilleure valeur de K par bootstrap
+# knn.boot <- tune.knn(
+#   x = donnees$X, # predicteurs
+#   y = donnees$Y, # réponse
+#   k = 1:50, # essayer knn avec K variant de 1 à 50
+#   tunecontrol = tune.control(sampling = "boot") # utilisation du bootstrap
+# )
+#
+# # Visualiser les résultats pour chaque K
+# summary(knn.boot)
+# plot(knn.boot)
+#
+# # Relancer la cross validation plusieurs fois pour déterminer le meilleur K (la valeur peut varier
+# # pour chaque lancement de tune.knn)
+# best_k <- numeric(length = 20)
+# for (i in 1:20) {
+#   knn_cross_ressults <- tune.knn(
+#     x = donnees$X,
+#     y = donnees$Y,
+#     k = 1:50,
+#     tunecontrol = tune.control(sampling = "boot") # utilisation du bootstrap
+#   )
+#   best_k[i] <- knn_cross_ressults$best.parameters[[1]]
+#   print(sprintf("Itération %s : meilleur K = %s", i, knn_cross_ressults$best.parameters))
+# }
+# table(best_k)
 
 # On va ensuite tester la qualité du modèle avec le paramètre choisi
 set.seed(123456)
@@ -203,41 +219,89 @@ knn_pred <- knn(
 
 ### Question 5 : Classifieur Bayésien naïf
 
-# Définir la liste des hyper-paramètres possibles pour le classifieur bayésien naïf
-grid <- expand.grid(
-  usekernel = c(TRUE, FALSE), # si vrai utilisation d'un noyau sinon gaussien
-  # fL = 0:5, # correction avec lissage de Laplace (ici ce paramètre n'est pas nécessaire, x étant continue)
-  fL = 0,
-  adjust = seq(1, 5, by = 1) # largeur de bande
+# Un premier modèle
+naive_bayes_model <- NaiveBayes(
+  formula = Y ~ X,
+  data = donnees
 )
 
-# Définir la méthode de validation, ici 5-fold cross validation
-control <- trainControl(method = "cv", number = 5)
-
-# Définir les entrées de la fonction train de caret, nommer les éléments est une contrainte de
-# caret
-x <- donnees[, "X", drop = FALSE]
-y <- donnees$Y
-
-# On optimise les paramètres du modèle
-naive_bayes <- train(
-  x = x, # prédicteurs
-  y = y, # réponse
-  method = "nb", # classifieur utilisé, ici Naive Bayes
-  trControl = control, # méthode d'échantillonnage, ici 5-fold CV
-  tuneGrid = grid # liste des paramètres à comparer
+# Prédiction avec ce modèle sur les données de test
+naive_bayes_pred <- predict(
+  object = naive_bayes_model,
+  newdata = test
 )
 
-# visualisation des résultats
-plot(naive_bayes) # on voit bien que la correction de Laplace n'apporte rien
-
-# On va ensuite tester la qualité du modèle avec le paramètre choisi (modèle non paramétrique
-# et BW = 1)
-naive_bayes_pred <- predict(naive_bayes, test)
-
-# calcule de l'erreur
+# Calculer la précision et l'erreur
 sum(naive_bayes_pred == test$Y) / n_test
 1 - sum(naive_bayes_pred == test$Y) / n_test
+
+# Définir la liste des hyper-paramètres possibles pour le classifieur bayésien naïf
+hyperparam_grid <- expand.grid(
+  usekernel = TRUE, # si vrai utilisation d'un noyau sinon gaussien
+  fL = 0, # correction avec lissage de Laplace (ici ce paramètre n'est pas nécessaire, x étant continue)
+  adjust = seq(1, 5, by = 1) # largeur de bande
+)
+hyperparam_grid <- rbind(hyperparam_grid, data.frame(usekernel = FALSE, fL = 0, adjust = 1))
+
+# Créer un échantillon de validation pour évaluer l'erreur sans biais
+set.seed(123456)
+train_index <- sample(1:nrow(donnees), size = nrow(donnees) * .8)
+validation_index <- setdiff(1:nrow(donnees), train_index)
+train <- donnees[train_index, ]
+validation <- donnees[validation_index, ]
+
+# Entraîner autant de modèles qu'il y a de combinaisons et renvoyer l'erreur
+results <- cbind(hyperparam_grid, "error" = 0)
+for (i in 1:nrow(results)) {
+  naive_bayes_model <- NaiveBayes(
+    formula = Y ~ X,
+    data = train,
+    usekernel = results$usekernel[i],
+    fL = results$fL[i],
+    adjust = results$adjust[i]
+  )
+  naive_bayes_pred <- predict(
+    object = naive_bayes_model,
+    newdata = validation
+  )
+  results[i, "error"] <- 1 - sum(naive_bayes_pred$class == validation$Y) / length(validation_index)
+}
+
+# Visualiser les résultats
+ggplot(
+  data = results,
+  mapping = aes(x = adjust, y = error, color = usekernel)
+) +
+  geom_line() +
+  geom_point() +
+  labs(
+    x = "Largeur de bande",
+    y = "Erreur",
+    title = "Comparaison des hyper-paramètres",
+    color = "Utilisation d'un noyau ?"
+  ) +
+  theme(
+    legend.position = c(.8, .22)
+  )
+
+# Le modèle optimal
+naive_bayes_model <- NaiveBayes(
+  formula = Y ~ X,
+  data = donnees,
+  usekernel = TRUE,
+  fL = 0,
+  adjust = 1
+)
+
+# Prédiction avec ce modèle sur les données de test
+naive_bayes_pred <- predict(
+  object = naive_bayes_model,
+  newdata = test
+)
+
+# Calculer la précision et l'erreur
+sum(naive_bayes_pred$class == test$Y) / n_test
+1 - sum(naive_bayes_pred$class == test$Y) / n_test
 
 # nettoyer la session
 rm(list = ls())
