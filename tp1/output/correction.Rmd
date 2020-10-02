@@ -324,7 +324,7 @@ knn_cross_results <- tune.knn(
   y = data$Y, # réponse
   k = 1:50, # essayer knn avec K variant de 1 à 50
   tunecontrol = tune.control(sampling = "cross"), # utilisation de la cross validation
-  cross = 5 # 5 blocks
+  cross = 5 # 5 blocs
 )
 ```
 
@@ -554,11 +554,17 @@ On commence par charger la table `Vehicule` avec la commande `data(Vehicle)` et 
 data(Vehicle)
 ```
 
-La variable cible est `class`, elle comporte 4 modalités. Les autres variables sont toutes quantitatives et peuvent toutes être utilisées comme prédicteurs. 
+La variable cible est `class`, elle comporte 4 modalités. Les 18 autres variables sont toutes quantitatives et peuvent toutes être utilisées comme prédicteurs. 
 
 ```{r predicteurs}
 predicteurs <- names(Vehicle)[-19]
 ```
+
+_Points d'attention_
+
+Le modèle des k-plus-proches-voisins est sensible au nombre de prédicteurs or ici il y en 18. Une pré-sélection de variables pourrait être la bienvenue. 
+
+Toutes les variables explicatives ne sont pas sur la même échelle de valeurs. Il faudra harmoniser les échelles pour que le calcul de distance ne soit pas impacté.
 
 ## Question 2 - Fonction de coût
 
@@ -569,7 +575,8 @@ Dans le cas d'une classification, la fonction de coût est la précision du mod�
 $$
 \mathscr{L}(y, \widehat{y}) = \sum_{i=1}^{n}1_{y_i\neq\widehat{y}_i}
 $$
-Pour calculer cette erreur on va séparer les données en un ensemble d'apprentissage et un ensemble de test. On définit une graine pour pouvoir reproduire les résultats et on choisit un ration 80/20. 
+
+Pour calculer cette erreur on va séparer les données en un ensemble d'apprentissage et un ensemble de test. On définit une graine pour pouvoir reproduire les résultats et on choisit un ratio 80/20. 
 
 ```{r split}
 set.seed(123456)
@@ -584,6 +591,7 @@ test <- Vehicle[test_index, ]
 >_Quelle est la règle de décision associée à l'algorithme des k plus proches voisins ? Mettre en oeuvre les k plus proches voisins. Justifir le choix des paramètres et commenter les résultats._
 
 Comme dans le cas précédent on va utiliser le vote à la majorité pour choisir la classe. Le choix de la meilleure valeur de $k$ se fait par validation croisée avec la fonction `e1071::tune.knn()`. On a vu que la valeur retournée pouvait varier. On va ici lancer plusieurs fois cette fonction pour ensuite choisir la valeur de $k$ la plus fréquemment retournée. 
+
 
 ```{r tune_knn_loop}
 best_k <- numeric(length = 20)
@@ -611,7 +619,7 @@ kable(
   kable_styling(full_width = FALSE)
 ```
 
-On utilise la valeur la plus fréquente pour construire notre modèle de plus-proches-voisins et ainsi mesurer l'erreur sur l'échantillon de test. Le modèle est aussi entrainé sur les données de validation 
+On utilise la valeur la plus fréquente pour construire notre modèle de plus-proches-voisins et ainsi mesurer l'erreur sur l'échantillon de test. Le modèle est entraîné sur l'ensemble des données de la table `train`. 
 
 ```{r vehicule_knn}
 set.seed(123456)
@@ -623,7 +631,7 @@ knn_pred <- knn(
 )
 ```
 
-L'erreur obtenue est `r  1 - sum(knn_pred == test[, "Class"]) / length(test_index)`.
+L'erreur obtenue est `r  round(1 - sum(knn_pred == test[, "Class"]) / length(test_index), digits = 3)`.
 
 ## Question 4 - Naive Bayes
 
@@ -631,7 +639,7 @@ L'erreur obtenue est `r  1 - sum(knn_pred == test[, "Class"]) / length(test_inde
 
 #### La règle de décision
 
-Comme dans le cas binaire c'est le maximum a posteriori qui est utilisé pour choisir la classe prédite. Les probabilités $P(Y = bus|X)$, $P(Y = saa|X)$, $P(Y = ope|X)$ et $P(Y = van|X)$ sont calculées et la classe choisie correspond à la probabilité la plus élevée. 
+Comme dans le cas binaire c'est le maximum a posteriori qui est utilisé pour choisir la classe prédite.
 
 #### Le choix des hyper-paramètres
 
@@ -648,7 +656,7 @@ hyperparam_grid <- expand.grid(
 hyperparam_grid <- rbind(hyperparam_grid, data.frame(usekernel = FALSE, fL = 0, adjust = 1))
 ```
 
-On va définir la façon de séparer les données en apprentissage et validation avec la fonction `caret::trainControl()`. On spécifie l'argument `method` à `"cv"` pour faire de la validation croisée et l'argument `number` à `5` pour faire du 5-blocks.
+On va définir la façon de séparer les données en apprentissage et validation avec la fonction `caret::trainControl()`. On spécifie l'argument `method` à `"cv"` pour faire de la validation croisée et l'argument `number` à `5` pour utiliser 5 blocs.
 
 ```{r vehicule_nb_control}
 control <- trainControl(method = "cv", number = 5)
@@ -662,6 +670,8 @@ On peut ensuite entraîner le modèle avec la fonction `caret::train()`. Un mod�
 * `trControl` : la méthode de validation
 * `tunegrid` : la grille d'hyper-paramètres à tester
 
+Cette fonction va choisir les meilleurs hyper-paramètres et retourner le meilleur modèle directement. 
+
 ```{r vehicule_nb_train}
 naive_bayes <- train(
   x = train[, predicteurs], # prédicteurs
@@ -672,7 +682,7 @@ naive_bayes <- train(
 )
 ```
 
-On peut visualiser les résultat sous forme graphique pour choisir la combinaison d'hyper-paramètres donnant le meilleur résultat.
+On peut visualiser les résultats sous forme graphique.
 
 ```{r vehicule_nb_train_plot}
 ggplot(
@@ -694,7 +704,7 @@ ggplot(
 
 Le meilleur modèle est obtenu avec l'utilisation d'un noyau pour estimer la densité et une largeur de bande de 1 (plus précisément un facteur multiplicatif de la largeur de bande de 1).
 
-On va donc utiliser ces hyper-paramètres pour effectuer une prédiction sur les données de test et ainsi mesurer l'erreur de généralisation du modèle bayésien naïf. La fonction `caret::predict()` va utiliser directement le résultat de la fonction `caret::train()` et donc les meilleurs hyper-paramètres.
+La fonction `caret::predict()` va utiliser directement le résultat de la fonction `caret::train()` et donc les meilleurs hyper-paramètres pour effectuer la prédiction.
 
 ```{r vehicule_nb_predict}
 naive_bayes_pred <- predict(
@@ -703,13 +713,54 @@ naive_bayes_pred <- predict(
 )
 ```
 
-L'erreur de généralisation est de `r round(1 - sum(naive_bayes_pred == test[, "Class"]) / length(test_index), digits = 3)`. 
+L'erreur de généralisation est de `r round(1 - sum(naive_bayes_pred == test$"Class") / length(test_index), digits = 3)`. 
 
 #### Pourquoi des _warnings_ ?
 
-On peut remarquer que la fonction `predict()` génère des messages de _warning_ `Numerical 0 probability for all classes with observation`. Cela veut dire que les 4 probabilités initialement calculées par le modèle sont toutes très faibles. Leur comparaison n'est donc peut-être pas pertinentes. La fonction renvoie des probabilités normalisées donc ces faibles valeurs n'appariassent pas lorsque qu'on regarde les résultats du modèle (utiliser la commande `predict(naive_bayes, test, type = "prob")` pour avoir les probabilités et non pas les classes directement).
+On peut remarquer que la fonction `predict()` génère des messages de _warning_ de la forme : `Numerical 0 probability for all classes with observation`. Cela veut dire que les 4 probabilités initialement calculées par le modèle sont toutes très faibles. Il s'agit des $P(Y = y) \times P(X = x|Y=y)$. Leur comparaison n'est donc peut-être pas pertinente. La fonction renvoie ces probabilités normalisées donc ces faibles valeurs n'apparaissent pas lorsqu'on regarde les résultats du modèle (utiliser la commande `predict(naive_bayes, test, type = "prob")` pour avoir les probabilités et non pas les classes directement).
 
 
+# Exercice 3 - Problème de régression
+
+__Context__: Since 2008, guests and hosts have used Airbnb to expand on traveling possibilities and present more unique, personalized way of experiencing the world. This dataset describes the listing activity and metrics in NYC, NY for 2019.
+
+__Content__: This data file includes all needed information to nd out more about hosts, geographical availability, necessary metrics to make predictions and draw conclusions.
+
+__Acknowledgements__ This public dataset is part of Airbnb, and the original source can be found on this website.
+
+__Source__: kaggle and Airbnb.
+
+* id : listing ID
+* name : name of the listing
+* host id : host ID
+* host name : name of the host
+* neighbourhood group : location
+* neighbourhood : area
+* latitude : latitude coordinates
+* longitude : longitude coordinates
+* room type listing : space type
+* price : price in dollars
+* minimum nights : amount of nights minimum
+* number of reviews : number of reviews
+* last review : latest review
+* reviews per month : number of reviews per month
+* calculated host listings count : amount of listing per host
+* availability 365 : number of days when listing is available for booking
+
+La variable à expliquer est _price_.
+
+## Question 1 - Choix des variables
+
+>_Quelles variables explicatives proposez-vous d'utiliser si vous êtes un particulier et que vous souhaitez prédire à quel prix vous pourriez proposer votre logement en Airbnb en vous positionnant "au prix du marché"._
+
+Ici les seuls régresseurs utilisables pour un particulier qui n’est pas encore inscrit sur
+Airbnb sont les variables de localisation (peut-être une sélection parmi les 4), et le type
+de logement (room_type). La variable à prédire est, cette fois, une variable quantitative
+(price).
+
+## Question 2 - Fonction de coût
+
+>_Quelle fonction de coût utiliser ?_
 
 
 
