@@ -358,42 +358,43 @@ for (i in 1:20) {
 }
 table(best_k)
 
-# On cherche la meilleure valeur de K par bootstrap
-knn_boot_ressults <- tune.knn(
-  x = scale(train[, predicteurs]), # predicteurs
-  y = train[, "Class"], # réponse
-  k = 1:50, # essayer knn avec K variant de 1 à 50
-  tunecontrol = tune.control(sampling = "boot") # utilisation du bootstrap
-)
-
-# visualiser les résultats pour chaque K
-summary(knn_boot_ressults)
-plot(knn_boot_ressults)
+# # On cherche la meilleure valeur de K par bootstrap
+# knn_boot_ressults <- tune.knn(
+#   x = scale(train[, predicteurs]), # predicteurs
+#   y = train[, "Class"], # réponse
+#   k = 1:50, # essayer knn avec K variant de 1 à 50
+#   tunecontrol = tune.control(sampling = "boot") # utilisation du bootstrap
+# )
+#
+# # visualiser les résultats pour chaque K
+# summary(knn_boot_ressults)
+# plot(knn_boot_ressults)
 
 # On va ensuite tester la qualité du modèle avec le paramètre choisi
 set.seed(123456)
 knn_pred <- knn(
   train = as.matrix(scale(train[, predicteurs])), # données d'apprentissage
   test = as.matrix(scale(test[, predicteurs])), # données à prédire
-  cl = train[, "Class"], # vraies valeurs
+  cl = train$Class, # vraies valeurs
   k = 3 # nombre de voisins
 )
 
 # Taux de bonnes prédictions
-sum(knn_pred == test[, "Class"]) / length(test_index)
+sum(knn_pred == test$Class) / length(test_index)
 
 # Taux d'erreur
-1 - sum(knn_pred == test[, "Class"]) / length(test_index)
+1 - sum(knn_pred == test$Class) / length(test_index)
 
 
 ### Question 4 : Classifieur Bayésien naïf
 
 # définir la liste des hyper-paramètres possibles pour le classifieur bayésien naïf
-grid <- expand.grid(
-  usekernel = c(TRUE, FALSE), # si vrai utilisation d'un noyau sinon gaussien
-  fL = 0, # pas de correction car les x sont continues
-  adjust = seq(1, 5, by = 1) # bandwidth
+hyperparam_grid <- expand.grid(
+  usekernel = TRUE, # si vrai utilisation d'un noyau sinon gaussien
+  fL = 0, # correction avec lissage de Laplace (ici ce paramètre n'est pas nécessaire, x étant continue)
+  adjust = seq(1, 5, by = 1) # largeur de bande
 )
+hyperparam_grid <- rbind(hyperparam_grid, data.frame(usekernel = FALSE, fL = 0, adjust = 1))
 
 # définir la méthode de validation, ici 10-fold cross validation
 control <- trainControl(method = "cv", number = 5)
@@ -409,7 +410,7 @@ naive_bayes <- train(
   preProc = c("BoxCox", "center", "scale", "pca"), # utilisation de différents pré-traitement
   method = "nb", # classifieur utilisé, ici Naive Bayes
   trControl = control, # méthode d'échantillonnage, ici 5-fold CV
-  tuneGrid = grid # liste des paramètres à comparer
+  tuneGrid = hyperparam_grid # liste des paramètres à comparer
 )
 
 # Visualisation des résultats
@@ -432,13 +433,10 @@ rm(list = ls())
 
 ### Lecture de la table
 
-# importer le dataset airbnb et avoir un aperçu des données
-airbnb <- read.csv(file = here("AB_NYC_2019.csv"))
+# Importer le dataset airbnb et avoir un aperçu des données
+airbnb <- read.csv(file = "tp1/data/AB_NYC_2019.csv")
 summary(airbnb)
-skim(airbnb)
-
-# transformer les facteurs en numeric pour knn
-airbnb$room_type <- as.numeric(airbnb$room_type)
+# skim(airbnb)
 
 # On décompose la base en un échantillon d'apprentissage et un échantillon de test
 set.seed(123456)
@@ -447,32 +445,84 @@ test_index <- setdiff(1:nrow(airbnb), train_index)
 train <- airbnb[train_index, ]
 test <- airbnb[test_index, ]
 
-# donner la liste des prédicteurs (utiliser dput(names(airbnb))), les colonnes d'identifiant sont
-# enlevées
-predicteurs <- c(
-  "latitude", "longitude",
-  "room_type", "minimum_nights",
-  "calculated_host_listings_count", "availability_365"
-)
-# seules ces variables sont utilisables car les autres ne sont pas observées dans notre cas (nouvel
-# appartement sur Airbnb)
-
 ### Question 3 : K plus proches voisins
 
-# on cherche la meilleure valeur de K par cross validation
-knn.fit <- train(
-  x = train[, predicteurs], # prédicteurs
+#### Variables continues uniquement
+
+# On cherche la meilleure valeur de K par cross validation
+knn_fit <- train(
+  x = train[, c("latitude", "longitude")], # prédicteurs
   y = train[, "price"], # réponse
-  tuneGrid = expand.grid(k = 20:50), # nombre de voisins
+  tuneGrid = data.frame(k = seq(100, 200, by = 5)), # nombre de voisins
   method = "knn", # knn classifieur
   trControl = trainControl(method = "cv", number = 5) # 5-fold CV
 )
 
 # visualisation des résultats
-plot(knn.fit)
+ggplot(
+  data = knn_fit$results,
+  mapping = aes(x = k, y = RMSE)
+) +
+  geom_line() +
+  geom_point() +
+  labs(
+    x = "Valeurs de k",
+    y = "Erreur quadratique",
+    title = "Evaluation de l'erreur sur données de validation"
+  )
 
-# On va ensuite tester la qualité du modèle avec le paramètre choisi (modèle non param et BW = 1)
-knn.pred <- predict(knn.fit, test)
+# Effectuer une prédiction sur les données test
+knn_pred <- predict(
+  object = knn_fit,
+  newdata = test
+)
 
-# calcule de l'erreur
-mean((knn.pred - test[, "price"])^2)
+# Calcul de l'erreur
+sqrt(mean((knn_pred - test$price)^2))
+
+#### Encoder les variables catégorielles
+
+# Transformer les variables catégorielles en factor puis en variables numériques
+train$room_type <- as.factor(train$room_type)
+train$neighbourhood_group <- as.factor(train$neighbourhood_group)
+train$neighbourhood <- as.factor(train$neighbourhood)
+
+train$room_type <- as.numeric(train$room_type)
+train$neighbourhood_group <- as.numeric(train$neighbourhood_group)
+train$neighbourhood <- as.numeric(train$neighbourhood)
+
+# Sur les données de test
+test$room_type <- as.numeric(as.factor(test$room_type))
+test$neighbourhood_group <- as.numeric(as.factor(test$neighbourhood_group))
+test$neighbourhood <- as.numeric(as.factor(test$neighbourhood))
+
+# On cherche la meilleure valeur de K par cross validation
+knn_fit <- train(
+  x = scale(train[, c("latitude", "longitude", "room_type", "neighbourhood_group", "neighbourhood")]), # prédicteurs
+  y = scale(train[, "price"]), # réponse
+  tuneGrid = data.frame(k = seq(20, 100, by = 10)), # nombre de voisins
+  method = "knn", # knn classifieur
+  trControl = trainControl(method = "cv", number = 5) # 5-fold CV
+)
+
+# visualisation des résultats
+ggplot(
+  data = knn_fit$results,
+  mapping = aes(x = k, y = RMSE)
+) +
+  geom_line() +
+  geom_point() +
+  labs(
+    x = "Valeurs de k",
+    y = "Erreur quadratique",
+    title = "Evaluation de l'erreur sur données de validation"
+  )
+
+# Effectuer une prédiction sur les données test
+knn_pred <- predict(
+  object = knn_fit,
+  newdata = test
+)
+
+# Calcul de l'erreur
+sqrt(mean((knn_pred - test$price)^2))
