@@ -330,10 +330,18 @@ predicteurs <- names(Vehicle)[-19]
 
 ### Question 3 : K plus proches voisins
 
+# Mise à niveau des variables
+train_scaled <- scale(train[, predicteurs])
+test_scaled <- scale(
+  x = test[, predicteurs],
+  center = attributes(train_scaled)[["scaled:center"]],
+  scale = attributes(train_scaled)[["scaled:scale"]]
+)
+
 # On cherche la meilleure valeur de K par cross validation
 knn.cross <- tune.knn(
-  x = scale(train[, predicteurs]), # predicteurs
-  y = train[, "Class"], # réponse
+  x = train_scaled, # predicteurs
+  y = train$Class, # réponse
   k = 1:50, # essayer knn avec K variant de 1 à 50
   tunecontrol = tune.control(sampling = "cross"), # utilisation de la cross validation
   cross = 5 # 5 blocks
@@ -347,8 +355,8 @@ plot(knn.cross)
 best_k <- numeric(length = 20)
 for (i in 1:20) {
   knn_cross_ressults <- tune.knn(
-    x = scale(train[, predicteurs]),
-    y = train[, "Class"],
+    x = train_scaled,
+    y = train$Class,
     k = 1:50,
     tunecontrol = tune.control(sampling = "cross"),
     cross = 5
@@ -358,22 +366,10 @@ for (i in 1:20) {
 }
 table(best_k)
 
-# # On cherche la meilleure valeur de K par bootstrap
-# knn_boot_ressults <- tune.knn(
-#   x = scale(train[, predicteurs]), # predicteurs
-#   y = train[, "Class"], # réponse
-#   k = 1:50, # essayer knn avec K variant de 1 à 50
-#   tunecontrol = tune.control(sampling = "boot") # utilisation du bootstrap
-# )
-#
-# # visualiser les résultats pour chaque K
-# summary(knn_boot_ressults)
-# plot(knn_boot_ressults)
-
 # On va ensuite tester la qualité du modèle avec le paramètre choisi
 set.seed(123456)
 knn_pred <- knn(
-  train = as.matrix(scale(train[, predicteurs])), # données d'apprentissage
+  train = train_scaled, # données d'apprentissage
   test = as.matrix(scale(test[, predicteurs])), # données à prédire
   cl = train$Class, # vraies valeurs
   k = 3 # nombre de voisins
@@ -452,7 +448,7 @@ test <- airbnb[test_index, ]
 # On cherche la meilleure valeur de K par cross validation
 knn_fit <- train(
   x = train[, c("latitude", "longitude")], # prédicteurs
-  y = train[, "price"], # réponse
+  y = train$price, # réponse
   tuneGrid = data.frame(k = seq(100, 200, by = 5)), # nombre de voisins
   method = "knn", # knn classifieur
   trControl = trainControl(method = "cv", number = 5) # 5-fold CV
@@ -482,25 +478,54 @@ sqrt(mean((knn_pred - test$price)^2))
 
 #### Encoder les variables catégorielles
 
-# Transformer les variables catégorielles en factor puis en variables numériques
-train$room_type <- as.factor(train$room_type)
-train$neighbourhood_group <- as.factor(train$neighbourhood_group)
-train$neighbourhood <- as.factor(train$neighbourhood)
-
-train$room_type <- as.numeric(train$room_type)
-train$neighbourhood_group <- as.numeric(train$neighbourhood_group)
-train$neighbourhood <- as.numeric(train$neighbourhood)
+# Transformer les variables catégorielles en factor et récupérer la liste des levels pour
+# l'appliquer au set de test
+train$room_type <- as.numeric(
+  factor(
+    x = train$room_type,
+    levels = as.factor(airbnb$room_type)
+  )
+)
+train$neighbourhood_group <- as.numeric(
+  factor(
+    x = train$neighbourhood_group,
+    levels = as.factor(airbnb$neighbourhood_group)
+  )
+)
+train$neighbourhood <- as.numeric(
+  factor(
+    x = train$neighbourhood,
+    levels = as.factor(airbnb$neighbourhood)
+  )
+)
 
 # Sur les données de test
-test$room_type <- as.numeric(as.factor(test$room_type))
-test$neighbourhood_group <- as.numeric(as.factor(test$neighbourhood_group))
-test$neighbourhood <- as.numeric(as.factor(test$neighbourhood))
+test$room_type <- as.numeric(
+  factor(
+    x = train$room_type,
+    levels = as.factor(airbnb$room_type)
+  )
+)
+test$neighbourhood_group <- as.numeric(
+  factor(
+    x = train$neighbourhood_group,
+    levels = as.factor(airbnb$neighbourhood_group)
+  )
+)
+test$neighbourhood <- as.numeric(
+  factor(
+    x = train$neighbourhood,
+    levels = as.factor(airbnb$neighbourhood)
+  )
+)
+
+
 
 # On cherche la meilleure valeur de K par cross validation
 knn_fit <- train(
   x = scale(train[, c("latitude", "longitude", "room_type", "neighbourhood_group", "neighbourhood")]), # prédicteurs
-  y = scale(train[, "price"]), # réponse
-  tuneGrid = data.frame(k = seq(20, 100, by = 10)), # nombre de voisins
+  y = train$price, # réponse
+  tuneGrid = data.frame(k = seq(40, 100, by = 5)), # nombre de voisins
   method = "knn", # knn classifieur
   trControl = trainControl(method = "cv", number = 5) # 5-fold CV
 )
@@ -521,7 +546,7 @@ ggplot(
 # Effectuer une prédiction sur les données test
 knn_pred <- predict(
   object = knn_fit,
-  newdata = test
+  newdata = scale(test[, c("latitude", "longitude", "room_type", "neighbourhood_group", "neighbourhood")])
 )
 
 # Calcul de l'erreur
