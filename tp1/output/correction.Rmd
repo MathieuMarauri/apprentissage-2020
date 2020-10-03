@@ -688,7 +688,7 @@ Cette fonction va choisir les meilleurs hyper-paramètres et retourner le meille
 ```{r vehicule_nb_train}
 naive_bayes <- train(
   x = train[, predicteurs], # prédicteurs
-  y = train[, "Class"], # réponse
+  y = train$Class, # réponse
   method = "nb", # classifieur utilisé, ici Naive Bayes
   trControl = control, # méthode d'échantillonnage, ici 5-fold CV
   tuneGrid = hyperparam_grid # combinaisons d'hyper-paramètres à évaluer
@@ -715,7 +715,7 @@ ggplot(
   )
 ```
 
-Le meilleur modèle est obtenu avec l'utilisation d'un noyau pour estimer la densité et une largeur de bande de 1 (plus précisément un facteur multiplicatif de la largeur de bande de 1).
+Le meilleur modèle est obtenu avec l'utilisation d'une estimation gaussienne de la densité.
 
 La fonction `caret::predict()` va utiliser directement le résultat de la fonction `caret::train()` et donc les meilleurs hyper-paramètres pour effectuer la prédiction.
 
@@ -830,7 +830,7 @@ On va construire le modèle de k plus-proches-voisins en se basant uniquement su
 knn_fit <- train(
   x = train[, c("latitude", "longitude")], # prédicteurs
   y = train[, "price"], # réponse
-  tuneGrid = data.frame(k = seq(100, 200, by = 5)), # nombre de voisins
+  tuneGrid = data.frame(k = seq(50, 500, by = 10)), # nombre de voisins
   method = "knn", # knn classifieur
   trControl = trainControl(method = "cv", number = 5) # 5-fold CV
 )
@@ -859,9 +859,10 @@ knn_pred <- predict(
   object = knn_fit,
   newdata = test
 )
+knn_num_error <- sqrt(mean((knn_pred - test$price)^2))
 ```
 
-L'erreur est obtenue avec la commande suivante `sqrt(mean((knn_pred - test$price)^2))`. Elle est de `r round(sqrt(mean((knn_pred - test$price)^2)), digits = 3)`.
+L'erreur est de `r round(sqrt(mean((knn_pred - test$price)^2)), digits = 3)`.
 
 #### Variables catégorielles encodées
 
@@ -913,15 +914,61 @@ Chaque variable est transformée en factor en utilisant tous les niveaux présen
 
 On peut ensuite, comme précédemment, construire le modèle et évaluer sa performance sur les données test. On pense bien sur à mettre nos variables sur la même échelle avec la fonction `scale()`. On n'oublie pas de sauvegarder les paramètres de cette transformation pour appliquer les mêmes au jeu de données de test. 
 
+On commence par mettre les variables sur la même échelle. 
+
+```{r airbnb_scale}
+train_scaled <- scale(train[, c("latitude", "longitude", "room_type", "neighbourhood_group", "neighbourhood")])
+test_scaled <- scale(
+  x = test[, c("latitude", "longitude", "room_type", "neighbourhood_group", "neighbourhood")],
+  center = attributes(train_scaled)[["scaled:center"]],
+  scale = attributes(train_scaled)[["scaled:scale"]]
+)
+```
+
+Puis on entraîne le modèle en testant différentes valeurs de $k$. 
+
 ```{r airbnb_knn_transform_model}
 knn_fit <- train(
-  x = scale(train[, c("latitude", "longitude", "room_type", "neighbourhood_group", "neighbourhood")]), # prédicteurs
+  x = train_scaled, # prédicteurs
   y = train$price, # réponse
-  tuneGrid = data.frame(k = seq(40, 100, by = 5)), # nombre de voisins
+  tuneGrid = data.frame(k = seq(30, 300, by = 10)), # nombre de voisins
   method = "knn", # knn classifieur
   trControl = trainControl(method = "cv", number = 5) # 5-fold CV
 )
 ```
+
+On peut visualiser les résultats pour ensuite affiner la grille de recherche.
+
+```{r airbnb_knn_transform_plot}
+ggplot(
+  data = knn_fit$results,
+  mapping = aes(x = k, y = RMSE)
+) +
+  geom_line() +
+  geom_point() +
+  labs(
+    x = "Valeurs de k",
+    y = "Erreur quadratique",
+    title = "Evaluation de l'erreur sur données de validation"
+  )
+```
+
+On effectuer les prédictions sur le jeu de données de test pour calculer l'erreur.
+
+```{r airbnb_knn_transform_pred}
+knn_pred <- predict(
+  object = knn_fit,
+  newdata = test_scaled
+)
+knn_factor_error <- sqrt(mean((knn_pred - test$price)^2))
+```
+
+L'erreur est de `r round(sqrt(mean((knn_pred - test$price)^2)), digits = 3)`.
+
+#### Utilisation de la distance de Hamming
+
+#### ACM
+
 
 
 <br>
