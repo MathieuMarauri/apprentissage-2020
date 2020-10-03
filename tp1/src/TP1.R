@@ -338,19 +338,6 @@ test_scaled <- scale(
   scale = attributes(train_scaled)[["scaled:scale"]]
 )
 
-# On cherche la meilleure valeur de K par cross validation
-knn.cross <- tune.knn(
-  x = train_scaled, # predicteurs
-  y = train$Class, # réponse
-  k = 1:50, # essayer knn avec K variant de 1 à 50
-  tunecontrol = tune.control(sampling = "cross"), # utilisation de la cross validation
-  cross = 5 # 5 blocks
-)
-
-# Visualiser les résultats pour chaque K
-summary(knn.cross)
-plot(knn.cross)
-
 # relancer la cross validation plusieurs fois pour déterminer le meilleur K
 best_k <- numeric(length = 20)
 for (i in 1:20) {
@@ -397,7 +384,7 @@ control <- trainControl(method = "cv", number = 5)
 
 # définir les entrées de al fonction train de caret, nommer les éléments est une contrainte de caret
 x <- train[, predicteurs]
-y <- train[, "Class"]
+y <- train$Class
 
 # On optimise les paramètres du modèle
 naive_bayes <- train(
@@ -483,39 +470,39 @@ sqrt(mean((knn_pred - test$price)^2))
 train$room_type <- as.numeric(
   factor(
     x = train$room_type,
-    levels = as.factor(airbnb$room_type)
+    levels = unique(airbnb$room_type)
   )
 )
 train$neighbourhood_group <- as.numeric(
   factor(
     x = train$neighbourhood_group,
-    levels = as.factor(airbnb$neighbourhood_group)
+    levels = unique(airbnb$neighbourhood_group)
   )
 )
 train$neighbourhood <- as.numeric(
   factor(
     x = train$neighbourhood,
-    levels = as.factor(airbnb$neighbourhood)
+    levels = unique(airbnb$neighbourhood)
   )
 )
 
 # Sur les données de test
 test$room_type <- as.numeric(
   factor(
-    x = train$room_type,
-    levels = as.factor(airbnb$room_type)
+    x = test$room_type,
+    levels = unique(airbnb$room_type)
   )
 )
 test$neighbourhood_group <- as.numeric(
   factor(
-    x = train$neighbourhood_group,
-    levels = as.factor(airbnb$neighbourhood_group)
+    x = test$neighbourhood_group,
+    levels = unique(airbnb$neighbourhood_group)
   )
 )
 test$neighbourhood <- as.numeric(
   factor(
-    x = train$neighbourhood,
-    levels = as.factor(airbnb$neighbourhood)
+    x = test$neighbourhood,
+    levels = unique(airbnb$neighbourhood)
   )
 )
 
