@@ -9,3 +9,6 @@
 
 # mac DS_store files
 *.DS_store
+
+# Cache folder
+*correction_*
