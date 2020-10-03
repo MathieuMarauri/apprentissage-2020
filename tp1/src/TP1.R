@@ -506,11 +506,17 @@ test$neighbourhood <- as.numeric(
   )
 )
 
-
+# Mise à niveau des variables
+train_scaled <- scale(train[, c("latitude", "longitude", "room_type", "neighbourhood_group", "neighbourhood")])
+test_scaled <- scale(
+  x = test[, c("latitude", "longitude", "room_type", "neighbourhood_group", "neighbourhood")],
+  center = attributes(train_scaled)[["scaled:center"]],
+  scale = attributes(train_scaled)[["scaled:scale"]]
+)
 
 # On cherche la meilleure valeur de K par cross validation
 knn_fit <- train(
-  x = scale(train[, c("latitude", "longitude", "room_type", "neighbourhood_group", "neighbourhood")]), # prédicteurs
+  x = train_scaled, # prédicteurs
   y = train$price, # réponse
   tuneGrid = data.frame(k = seq(40, 100, by = 5)), # nombre de voisins
   method = "knn", # knn classifieur
@@ -533,8 +539,42 @@ ggplot(
 # Effectuer une prédiction sur les données test
 knn_pred <- predict(
   object = knn_fit,
-  newdata = scale(test[, c("latitude", "longitude", "room_type", "neighbourhood_group", "neighbourhood")])
+  newdata = test_scaled
 )
 
 # Calcul de l'erreur
 sqrt(mean((knn_pred - test$price)^2))
+
+#### Distance de Hamming
+
+# y <- rep(1:2, each=50)                          # True class memberships
+# x <- y %*% t(rep(1, 20)) + rnorm(100*20) < 1.5  # Dataset with 20 variables
+# design.set <- sample(length(y), 50)
+# test.set <- setdiff(1:100, design.set)
+#
+# # Calculate distance and nearest neighbors
+# library(e1071)
+# d <- hamming.distance(x)
+# NN <- apply(d[test.set, design.set], 1, order)
+#
+# # Predict class membership of the test set
+# k <- 5
+# pred <- apply(NN[, 1:k, drop=FALSE], 1, function(nn){
+#   tab <- table(y[design.set][nn])
+#   as.integer(names(tab)[which.max(tab)])      # This is a pretty dirty line
+# }
+#
+# # Inspect the results
+# table(pred, y[test.set])
+
+#### ACM
+
+# Reconstruction des objects train et test
+set.seed(123456)
+train_index <- sample(1:nrow(airbnb), size = nrow(airbnb) * .7)
+test_index <- setdiff(1:nrow(airbnb), train_index)
+train <- airbnb[train_index, ]
+test <- airbnb[test_index, ]
+
+#
+
