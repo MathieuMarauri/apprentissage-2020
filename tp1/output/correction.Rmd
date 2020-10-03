@@ -14,7 +14,7 @@ TODO : explication estimation densité ; explication validation / apprentissage 
 
 ```{r initial_chunk, echo = FALSE, warning = FALSE, message = FALSE}
 library("knitr")
-opts_chunk$set(echo = TRUE, eval = TRUE, warning = FALSE, message = FALSE, cache = FALSE, fig.align = 'center', dpi = 300, out.width = '75%')
+opts_chunk$set(echo = TRUE, eval = TRUE, warning = FALSE, message = FALSE, cache = TRUE, fig.align = 'center', dpi = 300, out.width = '75%')
 ```
 
 Les différentes librairies qui seront utilisés pour ce TP sont listées ici. Le code pour générer ce document ainsi que le code R qui a servi de base peuvent être trouvés [ici](https://github.com/MathieuMarauri/apprentissage-2020/blob/master/tp1/output/correction.Rmd) et [là](https://github.com/MathieuMarauri/apprentissage-2020/blob/master/tp1/src/TP1.R).
@@ -592,13 +592,25 @@ test <- Vehicle[test_index, ]
 
 Comme dans le cas précédent on va utiliser le vote à la majorité pour choisir la classe. Le choix de la meilleure valeur de $k$ se fait par validation croisée avec la fonction `e1071::tune.knn()`. On a vu que la valeur retournée pouvait varier. On va ici lancer plusieurs fois cette fonction pour ensuite choisir la valeur de $k$ la plus fréquemment retournée. 
 
+Les données doivent être mise sur la même échelle pour éviter d'introduire artificiellement de l'importance sur certaines variables. Ce traitement doit être effectué sur les données de train et sur les données de test. Pour les données de test il faut appliquer les mêmes paramètres que pour les données de train.
+
+```{r knn_scale}
+train_scaled <- scale(train[, predicteurs])
+test_scaled <- scale(
+  x = test[, predicteurs], 
+  center = attributes(train_scaled)[["scaled:center"]],
+  scale = attributes(train_scaled)[["scaled:scale"]]
+)
+```
+
+On entraîne le modèle sur ces données.
 
 ```{r tune_knn_loop}
 best_k <- numeric(length = 20)
 for (i in 1:20) {
   knn_cross_results <- tune.knn(
-    x = scale(train[, predicteurs]),
-    y = train[, "Class"],
+    x = train_scaled,
+    y = train$Class,
     k = 1:50,
     tunecontrol = tune.control(sampling = "cross"),
     cross = 5
@@ -625,9 +637,9 @@ On utilise la valeur la plus fréquente pour construire notre modèle de plus-pr
 ```{r vehicule_knn}
 set.seed(123456)
 knn_pred <- knn(
-  train = as.matrix(scale(train[, predicteurs])), # données d'apprentissage
-  test = as.matrix(scale(test[, predicteurs])), # données à prédire
-  cl = train[, "Class"], # vraies valeurs
+  train = train_scaled, # données d'apprentissage
+  test = test_scaled, # données à prédire
+  cl = train$Class, # vraies valeurs
   k = 3 # nombre de voisins
 )
 ```
@@ -818,7 +830,7 @@ On va construire le modèle de k plus-proches-voisins en se basant uniquement su
 knn_fit <- train(
   x = train[, c("latitude", "longitude")], # prédicteurs
   y = train[, "price"], # réponse
-  tuneGrid = data.frame(k = seq(100, 200, by = 10)), # nombre de voisins
+  tuneGrid = data.frame(k = seq(100, 200, by = 5)), # nombre de voisins
   method = "knn", # knn classifieur
   trControl = trainControl(method = "cv", number = 5) # 5-fold CV
 )
@@ -853,7 +865,64 @@ L'erreur est obtenue avec la commande suivante `sqrt(mean((knn_pred - test$price
 
 #### Variables catégorielles encodées
 
-Les 3 variables catégorielles vont être encodées en variables continues. Les modalités sont transformées en nombre. Il faut essayer de faire en sorte de ranger les modalités par ordre d'importance si possible. 
+Les 3 variables catégorielles vont être encodées en variables continues. Les modalités sont transformées en nombre. De cette manière on pourra utiliser directement le modèle knn. Il faut faire attention à la manière avec laquelle on effectue cette transformation. En effet l'ensemble de test ne contient pas nécessairement les mêmes modalités que l'ensemble de train (cela sera surtout vrai pour les variables à forte cardinalité). 
+
+```{r airbnb_knn_transform}
+# Sur les données de train
+train$room_type <- as.numeric(
+  factor(
+    x = train$room_type,
+    levels = unique(airbnb$room_type)
+  )
+)
+train$neighbourhood_group <- as.numeric(
+  factor(
+    x = train$neighbourhood_group,
+    levels = unique(airbnb$neighbourhood_group)
+  )
+)
+train$neighbourhood <- as.numeric(
+  factor(
+    x = train$neighbourhood,
+    levels = unique(airbnb$neighbourhood)
+  )
+)
+
+# Sur les données de test
+test$room_type <- as.numeric(
+  factor(
+    x = test$room_type,
+    levels = unique(airbnb$room_type)
+  )
+)
+test$neighbourhood_group <- as.numeric(
+  factor(
+    x = test$neighbourhood_group,
+    levels = unique(airbnb$neighbourhood_group)
+  )
+)
+test$neighbourhood <- as.numeric(
+  factor(
+    x = test$neighbourhood,
+    levels = unique(airbnb$neighbourhood)
+  )
+)
+```
+
+Chaque variable est transformée en factor en utilisant tous les niveaux présents dans la table initiale.
+
+On peut ensuite, comme précédemment, construire le modèle et évaluer sa performance sur les données test. On pense bien sur à mettre nos variables sur la même échelle avec la fonction `scale()`. On n'oublie pas de sauvegarder les paramètres de cette transformation pour appliquer les mêmes au jeu de données de test. 
+
+```{r airbnb_knn_transform_model}
+knn_fit <- train(
+  x = scale(train[, c("latitude", "longitude", "room_type", "neighbourhood_group", "neighbourhood")]), # prédicteurs
+  y = train$price, # réponse
+  tuneGrid = data.frame(k = seq(40, 100, by = 5)), # nombre de voisins
+  method = "knn", # knn classifieur
+  trControl = trainControl(method = "cv", number = 5) # 5-fold CV
+)
+```
+
 
 <br>
 
