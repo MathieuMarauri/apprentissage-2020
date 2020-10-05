@@ -7,6 +7,7 @@ library("car") # fonction Boxplot
 library("caret") # ensemble de fonctions nécessaire au processus d'apprentissage supervisé
 library("class") # fonction knn
 library("e1071") # librairie nécessaire pour la fonction tune.knn
+library("FactoMineR") # ACM
 library("FNN") # fast KNN
 library("ggplot2") # Data visualisations using the Grammar of Graphics
 library("klaR") # modèle bayésien naif
@@ -390,7 +391,7 @@ y <- train$Class
 naive_bayes <- train(
   x = x, # prédicteurs
   y = y, # réponse
-  preProc = c("BoxCox", "center", "scale", "pca"), # utilisation de différents pré-traitement
+  # preProc = c("BoxCox", "center", "scale", "pca"), # utilisation de différents pré-traitement
   method = "nb", # classifieur utilisé, ici Naive Bayes
   trControl = control, # méthode d'échantillonnage, ici 5-fold CV
   tuneGrid = hyperparam_grid # liste des paramètres à comparer
@@ -547,34 +548,55 @@ sqrt(mean((knn_pred - test$price)^2))
 
 #### Distance de Hamming
 
-# y <- rep(1:2, each=50)                          # True class memberships
-# x <- y %*% t(rep(1, 20)) + rnorm(100*20) < 1.5  # Dataset with 20 variables
-# design.set <- sample(length(y), 50)
-# test.set <- setdiff(1:100, design.set)
-#
-# # Calculate distance and nearest neighbors
-# library(e1071)
-# d <- hamming.distance(x)
-# NN <- apply(d[test.set, design.set], 1, order)
-#
-# # Predict class membership of the test set
-# k <- 5
-# pred <- apply(NN[, 1:k, drop=FALSE], 1, function(nn){
-#   tab <- table(y[design.set][nn])
-#   as.integer(names(tab)[which.max(tab)])      # This is a pretty dirty line
-# }
-#
-# # Inspect the results
-# table(pred, y[test.set])
-
-#### ACM
-
-# Reconstruction des objects train et test
+# Reconstruction des objets train et test
 set.seed(123456)
 train_index <- sample(1:nrow(airbnb), size = nrow(airbnb) * .7)
 test_index <- setdiff(1:nrow(airbnb), train_index)
 train <- airbnb[train_index, ]
 test <- airbnb[test_index, ]
 
-#
+knn_hamming <- function(train, test, y, k) {
+  # Compute distance
+  dist_matrix <- hamming.distance(train, test)
+  # Select the k first neighbours for each row of test
+
+}
+
+dist_hamming <- function(x, y) {
+  sum(x != y)
+}
+
+
+train <- train[, c("latitude", "longitude", "room_type", "neighbourhood_group", "neighbourhood")]
+test <- test[, c("latitude", "longitude", "room_type", "neighbourhood_group", "neighbourhood")]
+
+dist_matrix <- hamming.distance(train, test)
+
+
+
+# Calculate distance and nearest neighbors
+d <- hamming.distance(x)
+NN <- apply(d[test.set, design.set], 1, order)
+
+# Predict class membership of the test set
+k <- 5
+pred <- apply(NN[, 1:k, drop=FALSE], 1, function(nn){
+  tab <- table(y[design.set][nn])
+  as.integer(names(tab)[which.max(tab)])      # This is a pretty dirty line
+}
+
+# Inspect the results
+table(pred, y[test.set])
+
+#### ACM
+
+# Reconstruction des objets train et test
+set.seed(123456)
+train_index <- sample(1:nrow(airbnb), size = nrow(airbnb) * .7)
+test_index <- setdiff(1:nrow(airbnb), train_index)
+train <- airbnb[train_index, ]
+test <- airbnb[test_index, ]
+
+# Effectuer l'acm sur les données de train
+acm <- MCA()
 
