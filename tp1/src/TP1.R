@@ -558,7 +558,7 @@ test <- airbnb[test_index, ]
 
 # Effectuer l'acm sur les données de train
 acm <- MCA(
-  X = train[, c("neighbourhood_group","room_type", "neighbourhood")],
+  X = train[, c("neighbourhood_group","room_type")],
   ncp = 3,
   graph = FALSE
 )
@@ -599,13 +599,13 @@ ggplot(
 # Préparer les données test pour faire une prédiction
 acm_pred <- predict.MCA(
   object = acm,
-  newdata = test[, c("neighbourhood_group","room_type", "neighbourhood")]
+  newdata = test[, c("neighbourhood_group","room_type")]
 )
 
 # Effectuer une prédiction sur les données test
 knn_pred <- predict(
   object = knn_fit,
-  newdata = test_scaled
+  newdata = cbind(test_scaled, acm_pred$coord)
 )
 
 # Calcul de l'erreur
