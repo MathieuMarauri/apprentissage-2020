@@ -100,7 +100,7 @@ $$
 \begin{align*}
   f^*(x) \colon \mathbb{R} &\to \{0, 1\}\\
   x &\mapsto f^*(x) = \begin{cases}
-      1 & \text{si $P(Y=y|X=x) > 0,5$}\\
+      1 & \text{si $P(Y=1|X=x) > 0,5$}\\
       0 & \text{sinon}\\
     \end{cases}
 \end{align*}
@@ -344,7 +344,7 @@ ggplot(
   )
 ```
 
-Le meilleur $k$ est obtenu avec la commande `knn_cross_results$best.parameters$k` : `r knn_cross_results$best.parameters$k`. De cette manière le choix de $k$ n'est plus arbitraire mais basé sur nos données et le $k$ donnant l'erreur minimale (sur les données de validation) est choisie. 
+Le meilleur $k$ est obtenu avec la commande `knn_cross_results$best.parameters$k` : `r knn_cross_results$best.parameters$k`. De cette manière le choix de $k$ n'est plus arbitraire mais basé sur nos données et le $k$ donnant l'erreur minimale (sur les données de validation) est choisi. 
 
 _Remarque : la valeur optimale de $k$ peut varier à chaque fois que la commande est lancée. On verra dans l'exercice suivant comment on peut contourner ce problème._
 
@@ -652,7 +652,7 @@ L'erreur obtenue est `r  round(1 - sum(knn_pred == test[, "Class"]) / length(tes
 
 #### La règle de décision
 
-Comme dans le cas binaire c'est le maximum a posteriori qui est utilisé pour choisir la classe prédite.
+Comme dans le cas binaire pour l'exercice 1 c'est le maximum a posteriori qui est utilisé pour choisir la classe prédite.
 
 #### Le choix des hyper-paramètres
 
@@ -692,13 +692,13 @@ naive_bayes <- train(
   method = "nb", # classifieur utilisé, ici Naive Bayes
   trControl = control, # méthode d'échantillonnage, ici 5-fold CV
   tuneGrid = hyperparam_grid # combinaisons d'hyper-paramètres à évaluer
-)
+) 
 ```
 
-On peut visualiser les résultats sous forme graphique.
+On peut visualiser les résultats sous forme graphique. On trace ici la précision. 
 
 ```{r vehicule_nb_train_plot}
-ggplot(
+ggplot( 
   data = naive_bayes$results,
   mapping = aes(x = adjust, y = Accuracy, color = usekernel)
 ) + 
@@ -715,7 +715,7 @@ ggplot(
   )
 ```
 
-Le meilleur modèle est obtenu avec l'utilisation d'une estimation gaussienne de la densité.
+Le meilleur modèle est obtenu avec l'utilisation d'une estimation par noyau et une largeur de bande de 1.
 
 La fonction `caret::predict()` va utiliser directement le résultat de la fonction `caret::train()` et donc les meilleurs hyper-paramètres pour effectuer la prédiction.
 
@@ -914,23 +914,13 @@ Chaque variable est transformée en factor en utilisant tous les niveaux présen
 
 On peut ensuite, comme précédemment, construire le modèle et évaluer sa performance sur les données test. On pense bien sur à mettre nos variables sur la même échelle avec la fonction `scale()`. On n'oublie pas de sauvegarder les paramètres de cette transformation pour appliquer les mêmes au jeu de données de test. 
 
-On commence par mettre les variables sur la même échelle. 
-
-```{r airbnb_scale}
-train_scaled <- scale(train[, c("latitude", "longitude", "room_type", "neighbourhood_group", "neighbourhood")])
-test_scaled <- scale(
-  x = test[, c("latitude", "longitude", "room_type", "neighbourhood_group", "neighbourhood")],
-  center = attributes(train_scaled)[["scaled:center"]],
-  scale = attributes(train_scaled)[["scaled:scale"]]
-)
-```
-
-Puis on entraîne le modèle en testant différentes valeurs de $k$. 
+On va centrer et réduire les variables pour qu'elles soient sur la même échelle directement avec `caret`. 
 
 ```{r airbnb_knn_transform_model}
 knn_fit <- train(
-  x = train_scaled, # prédicteurs
+  x = train[, c("latitude", "longitude", "room_type", "neighbourhood_group", "neighbourhood")], # prédicteurs
   y = train$price, # réponse
+  preProc = c("scale", "center"), # centrer et réduire
   tuneGrid = data.frame(k = seq(30, 300, by = 10)), # nombre de voisins
   method = "knn", # knn classifieur
   trControl = trainControl(method = "cv", number = 5) # 5-fold CV
@@ -953,12 +943,12 @@ ggplot(
   )
 ```
 
-On effectuer les prédictions sur le jeu de données de test pour calculer l'erreur.
+On effectuer les prédictions sur le jeu de données de test pour calculer l'erreur. Les paramètres pour centrer et réduire sont ceux calculés sur le train.
 
 ```{r airbnb_knn_transform_pred}
 knn_pred <- predict(
   object = knn_fit,
-  newdata = test_scaled
+  newdata = test
 )
 knn_factor_error <- sqrt(mean((knn_pred - test$price)^2))
 ```
