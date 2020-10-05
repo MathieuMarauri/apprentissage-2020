@@ -10,8 +10,6 @@ output:
     css: style.css
 ---
 
-TODO : explication estimation densité ; explication validation / apprentissage / test ; mlr3 ; NB exo 2 best model ; exo 3 ; scale => utiliser valeur de train pour le test
-
 ```{r initial_chunk, echo = FALSE, warning = FALSE, message = FALSE}
 library("knitr")
 opts_chunk$set(echo = TRUE, eval = TRUE, warning = FALSE, message = FALSE, cache = TRUE, fig.align = 'center', dpi = 300, out.width = '75%')
@@ -24,11 +22,9 @@ library("caret") # ensemble de meta-fonctions nécessaires au processus d'appren
 library("class") # fonction knn
 library("e1071") # librairie nécessaire pour la fonction tune.knn
 library("FactoMineR") # ACM
-library("FNN") # fast KNN
 library("ggplot2") # data visualisation
 library("klaR") # fonction Naivebayes utilisée avec la librairie caret
 library("mlbench") # dataset Vehicle
-library("skimr")
 ```
 
 ```{r ggplot-theme, echo = FALSE}
@@ -36,7 +32,7 @@ library("kableExtra") # table formating
 library("magrittr") # Pipe operators
 # Set default ggplot theme
 theme_set(
-  theme_light( 
+  theme_light(  
   base_size = 15
   ) +
   theme(
@@ -995,12 +991,12 @@ train <- airbnb[train_index, ]
 test <- airbnb[test_index, ]
 ```
 
-On effectue une ACM sur les données d'apprentissage en conservant toutes les dimensions dans le résultat. On transforme ainsi les variables _neighbourhood_group_ et _room_type_ en variables continues. (La variable _neighbourhood_ n'est pas utilisée car il faudrait effectuement un traitement sur les modalités à faible fréquence pour éviter des problèmes lors de la projection des indidivus de test sur les axes).
+On effectue une ACM sur les données d'apprentissage en conservant les 5 premières dimensions dans le résultat (choix par défaut). On transforme ainsi les variables _neighbourhood_group_ et _room_type_ en variables continues. (La variable _neighbourhood_ n'est pas utilisée car il faudrait effectuer un traitement sur les modalités à faible fréquence pour éviter des problèmes lors de la projection des individus de test sur les axes).
 
 ```{r acm_acm}
 acm <- MCA(
   X = train[, c("neighbourhood_group","room_type")],
-  ncp = 3,
+  ncp = 5,
   graph = FALSE
 )
 ```
@@ -1013,7 +1009,7 @@ test_scaled <- scale(
   x = test[, c("latitude", "longitude")],
   center = attributes(train_scaled)[["scaled:center"]],
   scale = attributes(train_scaled)[["scaled:scale"]]
-)
+) 
 
 # Ajouter les coordonnées aux données continues
 train_acm <- cbind(train_scaled, acm$ind$coord)
@@ -1023,7 +1019,7 @@ On entraîne ensuite le modèle de knn pour choisir le meilleur $k$.
 
 ```{r acm_knn}
 # Entraîner le modèle de knn
-knn_fit <- train(
+knn_fit <- train( 
   x = train_acm, # prédicteurs
   y = train$price, # réponse
   tuneGrid = data.frame(k = seq(40, 300, by = 20)), # nombre de voisins
@@ -1035,7 +1031,7 @@ knn_fit <- train(
 Et on peut voir les résultats comme précédemment. 
 
 ```{r acm_plot}
-ggplot( 
+ggplot(
   data = knn_fit$results,
   mapping = aes(x = k, y = RMSE)
 ) +
@@ -1052,13 +1048,13 @@ Pour effectuer les prédictions on doit d'abord projeter les individus de test s
 
 ```{r acm_proj}
 # Préparer les données test pour faire une prédiction
-acm_pred <- predict.MCA(
+acm_pred <- predict.MCA( 
   object = acm,
   newdata = test[, c("neighbourhood_group","room_type")]
 )
 
 # Effectuer une prédiction sur les données test
-knn_pred <- predict(
+knn_pred <- predict( 
   object = knn_fit,
   newdata = cbind(test_scaled, acm_pred$coord)
 )
@@ -1071,7 +1067,7 @@ L'erreur obtenue est de `r round(sqrt(mean((knn_pred - test$price)^2)), digits =
 
 #### Comparaison des erreurs
 
-On a testé 3 approches pour répondre à la problémaique de prédiction. On peut voir les différentes erreurs obtenues dans le tableau suivant. 
+On a testé 3 approches pour répondre à la problématique de prédiction. On peut voir les différentes erreurs obtenues dans le tableau suivant. 
 
 ```{r results}
 data.frame(
