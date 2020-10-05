@@ -108,11 +108,11 @@ $$
 
 __Cas 1__
 
-On définie la règle de Bayes en calculant $P(Yi=1|X_i=x_i)$ selon les valeurs de $X$.
+On définie la règle de Bayes en calculant $P(Y=1|X=x_i)$ selon les valeurs de $X$.
 
-Pour $X_i \leq 0$ : $P(Y_i=1|X_i=x_i)=P(U_i \leq 0,1) = 0,1$ d'où $f^*(x_i) = 0$.
+Pour $x_i \leq 0$ : $P(Y=1|X=x_i)=P(U_i \leq 0,1) = 0,1$ d'où $f^*(x_i) = 0$.
 
-Pour $X_i > 0$ : $P(Yi=1|X_i=x_i)=P(U_i > 0,2) = 1 - P(U_i \leq 0,2) = 0,8$ d'où $f^*(x_i) = 1$.
+Pour $x_i > 0$ : $P(Y=1|X=x_i)=P(U_i > 0,2) = 1 - P(U_i \leq 0,2) = 0,8$ d'où $f^*(x_i) = 1$.
 
 La règle de Bayes est donc : 
 
@@ -138,11 +138,11 @@ $$
 
 __Cas 2__
 
-On définie la règle de Bayes en calculant $P(Yi=1|X_i=x_i)$ selon les valeurs de $X$.
+On définie la règle de Bayes en calculant $P(Y=1|X=x_i)$ selon les valeurs de $X$.
 
-Pour $X_i \leq 0$ : $P(Yi=1|X_i=x_i)=P(U_i \leq 0,2) = 0,2$ d'où $f^*(x_i) = 0$.
+Pour $X \leq 0$ : $P(Y=1|X=x_i)=P(U_i \leq 0,2) = 0,2$ d'où $f^*(x_i) = 0$.
 
-Pour $X_i > 0$ : $P(Yi=1|X_i=x_i)=P(U_i > 0,4) = 1 - P(U_i \leq 0,4) = 0,6$ d'où $f^*(x_i) = 1$.
+Pour $X > 0$ : $P(Y=1|X=x_i)=P(U_i > 0,4) = 1 - P(U_i \leq 0,4) = 0,6$ d'où $f^*(x_i) = 1$.
 
 La règle de Bayes est donc : 
 
