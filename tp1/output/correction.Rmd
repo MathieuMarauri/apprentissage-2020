@@ -23,6 +23,7 @@ Les différentes librairies qui seront utilisés pour ce TP sont listées ici. L
 library("caret") # ensemble de meta-fonctions nécessaires au processus d'apprentissage supervisé
 library("class") # fonction knn
 library("e1071") # librairie nécessaire pour la fonction tune.knn
+library("FactoMineR") # ACM
 library("FNN") # fast KNN
 library("ggplot2") # data visualisation
 library("klaR") # fonction Naivebayes utilisée avec la librairie caret
@@ -35,7 +36,7 @@ library("kableExtra") # table formating
 library("magrittr") # Pipe operators
 # Set default ggplot theme
 theme_set(
-  theme_light(
+  theme_light( 
   base_size = 15
   ) +
   theme(
@@ -984,6 +985,103 @@ L'erreur est de `r round(sqrt(mean((knn_pred - test$price)^2)), digits = 3)`.
 
 #### ACM
 
+Pour intégrer toutes les variables dans le modèle de knn on peut aussi transformer les variables catégorielles en variables numériques par le biais d'un ACM. 
+
+```{r acm_split}
+set.seed(123456)
+train_index <- sample(1:nrow(airbnb), size = nrow(airbnb) * .7)
+test_index <- setdiff(1:nrow(airbnb), train_index)
+train <- airbnb[train_index, ]
+test <- airbnb[test_index, ]
+```
+
+On effectue une ACM sur les données d'apprentissage en conservant toutes les dimensions dans le résultat. On transforme ainsi les variables _neighbourhood_group_ et _room_type_ en variables continues. (La variable _neighbourhood_ n'est pas utilisée car il faudrait effectuement un traitement sur les modalités à faible fréquence pour éviter des problèmes lors de la projection des indidivus de test sur les axes).
+
+```{r acm_acm}
+acm <- MCA(
+  X = train[, c("neighbourhood_group","room_type")],
+  ncp = 3,
+  graph = FALSE
+)
+```
+
+A partir des résultats on a va construire un nouveau jeu de données, correspondant aux axes et aux données de localisation. Ces données sont centrées et réduites.
+
+```{r acm_scale}
+train_scaled <- scale(train[, c("latitude", "longitude")])
+test_scaled <- scale(
+  x = test[, c("latitude", "longitude")],
+  center = attributes(train_scaled)[["scaled:center"]],
+  scale = attributes(train_scaled)[["scaled:scale"]]
+)
+
+# Ajouter les coordonnées aux données continues
+train_acm <- cbind(train_scaled, acm$ind$coord)
+```
+
+On entraîne ensuite le modèle de knn pour choisir le meilleur $k$. 
+
+```{r acm_knn}
+# Entraîner le modèle de knn
+knn_fit <- train(
+  x = train_acm, # prédicteurs
+  y = train$price, # réponse
+  tuneGrid = data.frame(k = seq(40, 300, by = 20)), # nombre de voisins
+  method = "knn", # knn classifieur
+  trControl = trainControl(method = "cv", number = 5) # 5-fold CV
+)
+```
+
+Et on peut voir les résultats comme précédemment. 
+
+```{r acm_plot}
+ggplot( 
+  data = knn_fit$results,
+  mapping = aes(x = k, y = RMSE)
+) +
+  geom_line() +
+  geom_point() +
+  labs(
+    x = "Valeurs de k",
+    y = "Erreur quadratique",
+    title = "Evaluation de l'erreur sur données de validation"
+  )
+```
+
+Pour effectuer les prédictions on doit d'abord projeter les individus de test sur les axes de l'ACM. On peut ensuite effectuer une prédiction pour évaluer l'erreur.
+
+```{r acm_proj}
+# Préparer les données test pour faire une prédiction
+acm_pred <- predict.MCA(
+  object = acm,
+  newdata = test[, c("neighbourhood_group","room_type")]
+)
+
+# Effectuer une prédiction sur les données test
+knn_pred <- predict(
+  object = knn_fit,
+  newdata = cbind(test_scaled, acm_pred$coord)
+)
+
+# Calcul de l'erreur
+knn_acm_error <- sqrt(mean((knn_pred - test$price)^2))
+```
+
+L'erreur obtenue est de `r round(sqrt(mean((knn_pred - test$price)^2)), digits = 3)`.
+
+#### Comparaison des erreurs
+
+On a testé 3 approches pour répondre à la problémaique de prédiction. On peut voir les différentes erreurs obtenues dans le tableau suivant. 
+
+```{r results}
+data.frame(
+    "Approche" = c("Données de localisation uniquement", "Transformation des variables catégorielles en variables numériques", "Utilisation d'une ACM"),
+    "Erreur" = c(knn_num_error, knn_factor_error, knn_acm_error),
+    check.names = FALSE
+  ) %>% 
+kable(align = c('c', 'r')) %>% 
+  kable_styling(full_width = FALSE)
+```
 
 
 <br>
