@@ -546,47 +546,6 @@ knn_pred <- predict(
 # Calcul de l'erreur
 sqrt(mean((knn_pred - test$price)^2))
 
-#### Distance de Hamming
-
-# Reconstruction des objets train et test
-set.seed(123456)
-train_index <- sample(1:nrow(airbnb), size = nrow(airbnb) * .7)
-test_index <- setdiff(1:nrow(airbnb), train_index)
-train <- airbnb[train_index, ]
-test <- airbnb[test_index, ]
-
-knn_hamming <- function(train, test, y, k) {
-  # Compute distance
-  dist_matrix <- hamming.distance(train, test)
-  # Select the k first neighbours for each row of test
-
-}
-
-dist_hamming <- function(x, y) {
-  sum(x != y)
-}
-
-
-train <- train[, c("latitude", "longitude", "room_type", "neighbourhood_group", "neighbourhood")]
-test <- test[, c("latitude", "longitude", "room_type", "neighbourhood_group", "neighbourhood")]
-
-dist_matrix <- hamming.distance(train, test)
-
-
-
-# Calculate distance and nearest neighbors
-d <- hamming.distance(x)
-NN <- apply(d[test.set, design.set], 1, order)
-
-# Predict class membership of the test set
-k <- 5
-pred <- apply(NN[, 1:k, drop=FALSE], 1, function(nn){
-  tab <- table(y[design.set][nn])
-  as.integer(names(tab)[which.max(tab)])      # This is a pretty dirty line
-}
-
-# Inspect the results
-table(pred, y[test.set])
 
 #### ACM
 
@@ -598,5 +557,185 @@ train <- airbnb[train_index, ]
 test <- airbnb[test_index, ]
 
 # Effectuer l'acm sur les données de train
-acm <- MCA()
+acm <- MCA(
+  X = train[, c("neighbourhood_group","room_type", "neighbourhood")],
+  ncp = 3,
+  graph = FALSE
+)
+
+# Mise à niveau des variables continues
+train_scaled <- scale(train[, c("latitude", "longitude")])
+test_scaled <- scale(
+  x = test[, c("latitude", "longitude")],
+  center = attributes(train_scaled)[["scaled:center"]],
+  scale = attributes(train_scaled)[["scaled:scale"]]
+)
+
+# Ajouter les coordonnées aux données continues
+train_acm <- cbind(train_scaled, acm$ind$coord)
+
+# Entraîner le modèle de knn
+knn_fit <- train(
+  x = train_acm, # prédicteurs
+  y = train$price, # réponse
+  tuneGrid = data.frame(k = seq(40, 300, by = 20)), # nombre de voisins
+  method = "knn", # knn classifieur
+  trControl = trainControl(method = "cv", number = 5) # 5-fold CV
+)
+
+# visualisation des résultats
+ggplot(
+  data = knn_fit$results,
+  mapping = aes(x = k, y = RMSE)
+) +
+  geom_line() +
+  geom_point() +
+  labs(
+    x = "Valeurs de k",
+    y = "Erreur quadratique",
+    title = "Evaluation de l'erreur sur données de validation"
+  )
+
+# Préparer les données test pour faire une prédiction
+acm_pred <- predict.MCA(
+  object = acm,
+  newdata = test[, c("neighbourhood_group","room_type", "neighbourhood")]
+)
+
+# Effectuer une prédiction sur les données test
+knn_pred <- predict(
+  object = knn_fit,
+  newdata = test_scaled
+)
+
+# Calcul de l'erreur
+sqrt(mean((knn_pred - test$price)^2))
+
+## on fait une ACM pour avoir des variables quanti
+# install.packages("FactoMineR")
+library("FactoMineR") # pour l'ACM
+set.seed(123)
+#d_index <- sample(1:nrow(airbnb), size = nrow(airbnb) * .7) # numéros de lignes
+#test_index <- setdiff(1:nrow(airbnb), train_index)
+#rs : coordonnées factorielles des obervations de train
+res.mca <- MCA(airbnb[,c("neighbourhood_group","room_type")],
+               ind.sup = test_index,
+               ncp=6,
+               graph=FALSE)
+# plot(res.mca)
+res.mca$eig
+# res.mca$var
+trainmca<-res.mca$ind$coord #extrait des coordonnées des "individus actifs"
+testmca<-res.mca$ind.sup$coord # extrait des coordonnées des "individus supplémentaires" : test
+trainmca <- as.data.frame (cbind(trainmca, airbnb[train_index,"price"]))
+colnames(trainmca)[colnames(trainmca)=="V7"] <- "price"
+summary(trainmca)
+skim(trainmca)
+testmca <- as.data.frame (cbind(testmca,airbnb[test_index, "price"]))
+colnames(testmca)[colnames(testmca)=="V7"] <- "price"
+summary(testmca)
+head(trainmca)
+# knn ACM
+knnMCA.fit <- train(
+  x = trainmca[,1:6], # axes prédicteurs
+  y = trainmca[, "price"], # réponse
+  tuneGrid = expand.grid(k= seq(10, 150, by = 10)),
+  use.all=FALSE,# nombre de voisins
+  method = 'knn', # knn classifieur
+  trControl = trainControl(method = 'cv', number = 5)
+) # 5-fold CV
+# too many ties in knn
+# ajouter un aléa pour éviter d'avoir trop de voisins ex-eaquo
+noise<-rnorm(nrow(trainmca),0,0.0001)
+dnoise<-as.data.frame(cbind(noise,trainmca))
+head(dnoise)
+noise_test<-rnorm(nrow(testmca),0,0.0001)
+dtest<-as.data.frame(cbind(noise_test,testmca))
+names(dtest)[1]<- 'noise'
+head(dtest)
+# knn
+knn1.fit <- train(
+  x = dnoise[,1:7], # pr?dicteurs
+  y = dnoise[, "price"], # r?ponse
+  tuneGrid = expand.grid(k = seq(10, 200, by = 10)),
+  use.all=FALSE,# nombre de voisins
+  method = 'knn', # knn classifieur
+  trControl = trainControl(method = 'cv', number = 5)
+) # 5-fold CV
+plot(knn1.fit)
+knn1.fit$bestTune
+knn.pred <- predict(knn1.fit, dtest)
+# calcule de l'erreur
+sqrt(mean((knn.pred - dtest[, "price"])^2))
+# 222.2125
+# 221.9614
+# avec les variables explicatives quanti uniquement
+knn2.fit<- train(
+  x = airbnb[train_index,predicteurs_quanti], # prédicteurs
+  y = airbnb[train_index, "price"], # réponse
+  tuneGrid = expand.grid(k = seq(10, 200, by = 10)),
+  use.all=FALSE,# nombre de voisins
+  method = 'knn', # knn classifieur
+  trControl = trainControl(method = 'cv', number = 5) # 5-fold CV
+)
+plot(knn2.fit)
+knn2.fit$bestTune
+test <- airbnb[test_index, c("latitude","longitude")]
+knn.pred <- predict(knn2.fit, test)
+# calcule de l'erreur
+sqrt(mean((knn.pred - airbnb[test_index,"price"])^2))
+# 212.2536
+###  knn avec Coordonnées ACM + variables quanti
+train <-cbind(trainmca,scale(airbnb[train_index,predicteurs_quanti]))
+test <-cbind(testmca,scale(airbnb[test_index,predicteurs_quanti]))
+head(train)
+knn3.fit<- train(
+  x = train[,-7], # prédicteurs
+  y = train[, "price"], # réponse
+  tuneGrid = expand.grid(k = seq(10, 200, by = 10)),
+  use.all=FALSE,# nombre de voisins
+  method = 'knn', # knn classifieur
+  trControl = trainControl(method = 'cv', number = 5) # 5-fold CV
+)
+plot(knn3.fit)
+knn3.fit$bestTune
+knn.pred <- predict(knn3.fit, test[,-7])
+# calcule de l'erreur
+sqrt(mean((knn.pred - airbnb[test_index,"price"])^2))
+# 215.5688
+###  knn sur une FAMD
+set.seed(123)
+res.famd <- FAMD(airbnb[,predicteurs],
+                 ind.sup = test_index,
+                 # ncp=6,
+                 graph=FALSE)
+plot(res.famd)
+plot(res.famd$eig)
+# res.mca$var
+trainfamd<-res.famd$ind$coord #extrait des coordonnées des "individus actifs"
+testfamd<-res.famd$ind.sup$coord # extrait des coordonnées des "individus supplémentaires" : test
+trainfamd <- as.data.frame (cbind(trainfamd, airbnb[train_index,"price"]))
+colnames(trainfamd)[colnames(trainfamd)=="V6"] <- "price"
+summary(trainfamd)
+skim(trainfamd)
+testfamd <- as.data.frame (cbind(testfamd,airbnb[test_index, "price"]))
+colnames(testfamd)[colnames(testfamd)=="V6"] <- "price"
+summary(testfamd)
+head(testfamd)
+# knn FAMD
+knnFAMD.fit <- train(
+  x = trainfamd[,1:5], # axes prédicteurs
+  y = trainfamd[, "price"], # réponse
+  tuneGrid = expand.grid(k = seq(10, 200, by = 10)),
+  use.all=FALSE,# nombre de voisins
+  method = 'knn', # knn classifieur
+  trControl = trainControl(method = 'cv', number = 5)
+) # 5-fold CV
+plot(knnFAMD.fit)
+knnFAMD.fit$bestTune
+knn.pred <- predict(knnFAMD.fit, testfamd[,-6])
+#head(testfamd)
+# calcule de l'erreur
+sqrt(mean((knn.pred - airbnb[test_index,"price"])^2))
+# 222.409
 
