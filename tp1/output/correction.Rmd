@@ -720,7 +720,7 @@ naive_bayes <- train(
 On peut visualiser les résultats sous forme graphique. On trace ici la précision. 
 
 ```{r vehicule_nb_train_plot}
-ggplot( 
+ggplot(
   data = naive_bayes$results,
   mapping = aes(x = adjust, y = Accuracy, color = usekernel)
 ) + 
@@ -810,7 +810,7 @@ de logement (room_type). La variable à prédire est, cette fois, une variable q
 On est ici dans le cas d'une régression (variable cible quantitative), c'est donc la perte quadratique qui sera utilisée : 
 
 $$
-\mathscr{L}(Y, \widehat{Y}) = |Y-\widehat{Y}|^2
+\mathscr{L}(Y, \widehat{Y}) = \|Y-\widehat{Y}\|^2
 $$
 Il s'agit simplement de la racine carrée de la moyenne des erreurs au carré. Pour estimer cette erreur on va diviser les données en un ensemble d'apprentissage et un ensemble de test. 
 
@@ -976,8 +976,6 @@ knn_factor_error <- sqrt(mean((knn_pred - test$price)^2))
 ```
 
 L'erreur est de `r round(sqrt(mean((knn_pred - test$price)^2)), digits = 3)`.
-
-#### Utilisation de la distance de Hamming
 
 #### ACM
 

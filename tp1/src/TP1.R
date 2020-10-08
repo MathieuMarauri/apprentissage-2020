@@ -138,49 +138,6 @@ knn_cross_ressults <- tune.knn(
 summary(knn_cross_ressults)
 plot(knn_cross_ressults)
 
-# # Relancer la cross validation plusieurs fois pour déterminer le meilleur K (la valeur peut varier
-# # pour chaque lancement de tune.knn)
-# best_k <- numeric(length = 20)
-# for (i in 1:20) {
-#   knn_cross_ressults <- tune.knn(
-#     x = donnees$X,
-#     y = donnees$Y,
-#     k = 1:50,
-#     tunecontrol = tune.control(sampling = "cross"),
-#     cross = 10
-#   )
-#   best_k[i] <- knn_cross_ressults$best.parameters[[1]]
-#   print(sprintf("Itération %s : meilleur K = %s", i, knn_cross_ressults$best.parameters))
-# }
-# table(best_k)
-
-# # On cherche la meilleure valeur de K par bootstrap
-# knn.boot <- tune.knn(
-#   x = donnees$X, # predicteurs
-#   y = donnees$Y, # réponse
-#   k = 1:50, # essayer knn avec K variant de 1 à 50
-#   tunecontrol = tune.control(sampling = "boot") # utilisation du bootstrap
-# )
-#
-# # Visualiser les résultats pour chaque K
-# summary(knn.boot)
-# plot(knn.boot)
-#
-# # Relancer la cross validation plusieurs fois pour déterminer le meilleur K (la valeur peut varier
-# # pour chaque lancement de tune.knn)
-# best_k <- numeric(length = 20)
-# for (i in 1:20) {
-#   knn_cross_ressults <- tune.knn(
-#     x = donnees$X,
-#     y = donnees$Y,
-#     k = 1:50,
-#     tunecontrol = tune.control(sampling = "boot") # utilisation du bootstrap
-#   )
-#   best_k[i] <- knn_cross_ressults$best.parameters[[1]]
-#   print(sprintf("Itération %s : meilleur K = %s", i, knn_cross_ressults$best.parameters))
-# }
-# table(best_k)
-
 # On va ensuite tester la qualité du modèle avec le paramètre choisi
 set.seed(123456)
 knn_pred <- knn(
@@ -233,8 +190,8 @@ naive_bayes_pred <- predict(
 )
 
 # Calculer la précision et l'erreur
-sum(naive_bayes_pred == test$Y) / n_test
-1 - sum(naive_bayes_pred == test$Y) / n_test
+sum(naive_bayes_pred$class == test$Y) / n_test
+1 - sum(naive_bayes_pred$class == test$Y) / n_test
 
 # Définir la liste des hyper-paramètres possibles pour le classifieur bayésien naïf
 hyperparam_grid <- expand.grid(
@@ -559,7 +516,7 @@ test <- airbnb[test_index, ]
 # Effectuer l'acm sur les données de train
 acm <- MCA(
   X = train[, c("neighbourhood_group","room_type")],
-  ncp = 3,
+  ncp = 20,
   graph = FALSE
 )
 
