@@ -1,0 +1,157 @@
+---
+title: "Apprentissage supervisé - TP2"
+output:
+  html_document:
+    code_folding: none
+    toc: true
+    toc_depth: 2
+    theme: cerulean
+    highlight: tango
+    css: style.css
+---
+
+```{r initial_chunk, echo = FALSE, warning = FALSE, message = FALSE}
+library("knitr")
+opts_chunk$set(echo = TRUE, eval = TRUE, warning = FALSE, message = FALSE, cache = TRUE, fig.align = 'center', dpi = 300, out.width = '75%')
+```
+
+Les différentes librairies qui seront utilisés pour ce TP sont listées ici. Le code pour générer ce document ainsi que le code R qui a servi de base peuvent être trouvés [ici](https://github.com/MathieuMarauri/apprentissage-2020/blob/master/tp2/output/correction.Rmd) et [là](https://github.com/MathieuMarauri/apprentissage-2020/blob/master/tp2/src/TP1.R).
+
+```{r librairies}
+library("caret") # ensemble de meta-fonctions nécessaires au processus d'apprentissage supervisé
+library("rpart") # modèle CART
+library("rpart.plot") # plot modèle CART 
+```
+
+```{r ggplot-theme, echo = FALSE}
+library("kableExtra") # table formating
+library("magrittr") # Pipe operators
+# Set default ggplot theme
+theme_set(
+  theme_light(  
+  base_size = 15
+  ) +
+  theme(
+    text = element_text(family = "Gibson", colour = "gray10"),
+    panel.border = element_blank(),
+    axis.line = element_line(colour = "gray50", size = .5),
+    axis.ticks = element_blank(),
+    strip.background = element_rect(colour = "gray50", fill = "transparent", size = .7),
+    strip.text.x = element_text(colour = "gray10"),
+    strip.text.y = element_text(colour = "gray10"),
+    legend.key.size = unit(1.5, "cm")
+  )
+)
+
+# Set default scales
+scale_colour_continuous <- function(...) ggplot2::scale_colour_viridis_c(..., option = "viridis")
+scale_colour_discrete <- function(...) ggplot2::scale_colour_viridis_d(..., option = "viridis")
+scale_fill_continuous <- function(...) ggplot2::scale_fill_viridis_c(..., option = "viridis")
+scale_fill_discrete <- function(...) ggplot2::scale_fill_viridis_d(..., option = "viridis")
+```
+
+__Énoncé__
+
+On dispose d'un ensemble de données sur les champignons (source The Audubon Society Field Guide to North American Mushrooms (1981). G. H. Linco (Pres.), New York : Alfred A. Knopf). Il est constitué de 8124 observations pour lesquelles diverses descriptions sont disponibles comme la
+surface, l'odeur, la couleur, etc, ainsi que l'information : comestible ou poison.
+
+L'objectif de ce TD/TP est de construire un modèle prédictif capable de différencier les champignons comestibles des non-comestibles, grâce aux méthodes de segmentation par arbres.
+
+Variable cible :
+Classe : comestible=e, poison=p
+
+Variables explicatives :
+
+* odor = odeur : amande (almond) = a, anis (anise) = l, creosote (creosote) = c, poisson (fishy) = y, repugnant (foul) = f, moisi (musty) = m, aucune (none) = n, âcre (pungent) = p, épicé (spicy) = s
+* stalk-shape : forme du pied s'élargissant (enlarging) = e, se resserrant (tapering) = t 
+* stalk-root : racine bulbeux (bulbous) = b, en forme de massue (club)=c, en forme de corolle
+(cup)=u, égales ou par paires (equal) = e, avec des rhizomes (rhizomorphs) =z, racines (rooted) = r
+* stalk-color-above-ring : couleur de tige au-dessus de l'anneau marron (brown)=n, chamois
+(buff)=b, cannelle (cinnamon) =c, gris (gray)=g, orange=o, rose (pink) = p, rouge (red) = e, blanc (white) = w, jaune (yellow) =y
+* stalk-color-below-ring : couleur de tige au-dessous de l'anneau marron (brown)=n, chamois
+(buff)=b, cannelle (cinnamon) =c, gris (gray)=g, orange=o, rose (pink) = p, rouge (red) = e, blanc (white) = w, jaune (yellow) =y
+* spore-print-color : couleur des spores noire (black) = k, marron (brown) = n, chamois (buff) = b, chocolat (chocolate) = h, verte (green) = r, orange=o, violette (purple) =u, blanche (white) = w, jaune (yellow) = y
+
+
+# Partie 1 - TD
+
+## Question 1 - La méthode CART
+
+>_On désire appliquer la méthode CART (discrimination par arbre) pour détecter les champignons non comestibles. Quels sont les grands principes de cette méthode ?_
+
+_Principes généraux de la segmentation par arbres_
+
+On construit un arbre à l'aide de divisions successives d'un ensemble d'individus appartenant à un échantillon.
+
+Chaque division (ou scission) conduit à deux (ou plus) nœuds (ou segments) : 
+
+* le nœud divisé est appelé nœud-parent,
+* les nœuds générés par la division s'appellent nœuds-enfants.
+* les nœuds sont des groupes d'individus le plus homogènes possible par rapport à une variable à expliquer (ou variable cible) $Y$, qui peut être nominale, ordinale ou quantitative.
+
+Les divisions s'opèrent à partir de variables explicatives (ou prédicteurs) $X_1 \dots X_j \dots X_J$, qui peuvent être nominales, ordinales ou quantitatives.
+
+Le résultat obtenu est en général sous la forme d'un arbre inversé : la racine (en haut de l'arbre) représente l'échantillon à segmenter, les autres nœuds sont soit des nœuds intermédiaires (encore divisibles), soit des nœuds terminaux.
+
+L'ensemble des nœuds terminaux constitue une partition de l'échantillon en classes homogènes relativement à la variable $Y$.
+
+Principes spécifiques de la méthode CART :
+
+1. construire un arbre maximal
+2. élaguer
+3. définir l’arbre (optimal) fiable
+
+Les divisions sont binaires uniquement. Les règles d'arrêt de la procédure de division sont telles qu’on obtient un arbre maximal de grande taille.
+
+
+## Question 2 - Autres méthodes envisageables
+
+> _Quelles sont les autres méthodes envisageables ?_
+
+On pourrait utiliser un modèle KNN, un modèle bayésien naïf ou encore des SVM, un arbre CHAID, une analyse discriminante linéaire, des méthodes de régression, ...
+
+## Question 3 - Apprentissage, validation, test
+
+<blockquote>
+_L'échantillon total constitué de 8124 observations pourrait être divisé en trois parties :
+
+* Echantillon d'apprentissage,
+* Echantillon de validation,
+* Echantillon test.
+
+Quel serait le rôle de chacun de ces trois échantillons dans la mise en œuvre de CART?_
+</blockquote>
+
+L'échantillon d'apprentissage permet de construire le modèle. C'est sur cet échantillon que l'arbre maximal est construit et qu'il est élagué. 
+
+L'échantillon de validation permet de choisir les hyper-paramètres de la méthode CART. Ces hyper-paramètres sont : 
+
+* le nombre minimal d'individus nécessaire pour effectuer une division
+* le nombre minimal d'individus dans une feuille
+* la taille maximal de l'arbre
+* le critère d'impureté à utiliser : l'indice de Gini, l'entropie de Shannon ou le critère de Twoing
+* le nombre de blocs utilisé dans la validation croisée nécessaire à l'élagage de l'arbre.
+
+L'échantillon de test permet quant à lui d'estimer l'erreur de généralisation du modèle. 
+
+## Question 4 - 
+
+>_Pourrait-on se passer de créer ces trois sous-échantillons ? Si oui, quelle modification de la méthode en découlerait ?_
+
+# Partie 2 - TP
+
+La table contenant les données s'intitule `mushroom.csv`. Elle se trouve dans le répertoire Apprentissage Supervisé dans moodle.
+
+## Question 9 - Un premier modèle
+
+<blockquote>
+Mettre en œuvre une première analyse sous R :
+
+* en supposant les probabilités a priori proportionnelles aux effectifs et les coûts de mauvais classement égaux
+* en utilisant la validation croisée sur l'échantillon "base" (lignes identifiées par cette modalité avec la variable _echantillon_ de la table `mushroom.csv`).
+</blockquote>
+
+
+<br>
+
+<cite> -- Mathieu Marauri</cite>
