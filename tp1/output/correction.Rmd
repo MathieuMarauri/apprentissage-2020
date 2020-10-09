@@ -57,7 +57,7 @@ scale_fill_discrete <- function(...) ggplot2::scale_fill_viridis_d(..., option =
 
 # Exercice 1 - Règle et risque de Bayes en discrimination binaire
 
-Voici 3 problèmes de discrimination binaire, dans chaque cas on a simulé un échantillon de taille $n = 1000$.
+Voici 3 problèmes de discrimination binaire, on a simulé un échantillon de taille $n = 1000$ pour les cas 1 et 2.
 
 __Cas 1__
 
@@ -107,9 +107,9 @@ __Cas 1__
 
 On définie la règle de Bayes en calculant $P(Y=1|X=x_i)$ selon les valeurs de $X$.
 
-Pour $x_i \leq 0$ : $P(Y=1|X=x_i)=P(U_i \leq 0,1) = 0,1$ d'où $f^*(x_i) = 0$.
+Pour $X \leq 0$ : $P(Y=1|X=x_i)=P(U_i \leq 0,1) = 0,1$ d'où $f^*(x_i) = 0$.
 
-Pour $x_i > 0$ : $P(Y=1|X=x_i)=P(U_i > 0,2) = 1 - P(U_i \leq 0,2) = 0,8$ d'où $f^*(x_i) = 1$.
+Pour $X > 0$ : $P(Y=1|X=x_i)=P(U_i > 0,2) = 1 - P(U_i \leq 0,2) = 0,8$ d'où $f^*(x_i) = 1$.
 
 La règle de Bayes est donc : 
 
@@ -124,7 +124,7 @@ On calcule maintenant l'erreur de Bayes. Elle correspond à la différence entre
 
 $$
 \begin{split}
-\mathcal{R}^* & = P(Y \neq f^*(X)) \\
+\mathcal{R}_P^* & = P(Y \neq f^*(X)) \\
 & = P(Y = 1 \cap f^*(X) = 0) + P(Y = 0 \cap f^*(X) = 1) \\
 & = P(Y = 1 \cap X \leq 0) + P(Y = 0 \cap X > 0) \\
 & = P(X \leq 0) \times P(Y = 1 | X \leq 0) + P(X > 0) \times P(Y = 0 | X > 0) \\
@@ -401,13 +401,13 @@ Pour estimer $P(Y=y|X=x)$ (le but de tout modèle d'apprentissage supervisé) il
 On cherche donc :
 
 $$
-\underset{y \in Y}{\arg\max} \ \ \widehat{P}(Y=y|X=x)
+\underset{y \in \mathcal{Y}}{\arg\max} \ \ \widehat{P}(Y=y|X=x)
 $$
 
 Comme $P(X=x)$ ne dépend pas de $y$ on cherche donc :
 
 $$
-\underset{y \in Y}{\arg\max} \ \ \widehat{P}(Y=y) \times \widehat{P}(X=x|Y=y)
+\underset{y \in \mathcal{Y}}{\arg\max} \ \ \widehat{P}(Y=y) \times \widehat{P}(X=x|Y=y)
 $$
 
 Le calcul de $\widehat{P}(Y=y)$ se fait directement par les fréquences empiriques. $\widehat{P}(X=x|Y=y)$ se calcule en faisant l'hypothèse que tous les $X_j$, les différentes variables explicatives, sont indépendants conditionnellement à $Y$. On a donc :
@@ -419,9 +419,9 @@ $$
 On calcule donc : 
 
 $$
-\underset{y \in Y}{\arg\max} \ \ \widehat{P}(Y=y) \times \prod_{j=1}^{J}\widehat{P}(X_j=x_j|Y=y)
+\underset{y \in \mathcal{Y}}{\arg\max} \ \ \widehat{P}(Y=y) \times \prod_{j=1}^{J}\widehat{P}(X_j=x_j|Y=y)
 $$
-Les probabilités renvoyées dans les différentes implémentations de ce modèle correspondent aux $\widehat{P}(Y=y) \times \prod_{j=1}^{J}\widehat{P}(X_j=x_j|Y=y)$ pour chaque $y \in Y$ et non pas à $\widehat{P}(Y=y|X=x)$. 
+Les probabilités renvoyées dans les différentes implémentations de ce modèle correspondent aux $\widehat{P}(Y=y) \times \prod_{j=1}^{J}\widehat{P}(X_j=x_j|Y=y)$ pour chaque $y \in \mathcal{Y}$ et non pas à $\widehat{P}(Y=y|X=x)$. 
 
 #### La règle de décision
 
@@ -592,10 +592,10 @@ Toutes les variables explicatives ne sont pas sur la même échelle de valeurs. 
 
 >_Quelle fonction de coût utiliser ?_
 
-Dans le cas d'une classification, la fonction de coût est la précision du modèle. Pour $n$ observations de test on a donc :
+Dans le cas d'une classification, la fonction de coût est l'erreur du modèle. Pour $n$ observations de test on a donc :
 
 $$
-\mathscr{L}(y, \widehat{y}) = \sum_{i=1}^{n}1_{y_i\neq\widehat{y}_i}
+\mathscr{L}(y, \widehat{y}) = \mathbb{1}_{y \neq \widehat{y}}
 $$
 
 Pour calculer cette erreur on va séparer les données en un ensemble d'apprentissage et un ensemble de test. On définit une graine pour pouvoir reproduire les résultats et on choisit un ratio 80/20. 
