@@ -421,7 +421,6 @@ On calcule donc :
 $$
 \underset{y \in \mathcal{Y}}{\arg\max} \ \ \widehat{P}(Y=y) \times \prod_{j=1}^{J}\widehat{P}(X_j=x_j|Y=y)
 $$
-Les probabilités renvoyées dans les différentes implémentations de ce modèle correspondent aux $\widehat{P}(Y=y) \times \prod_{j=1}^{J}\widehat{P}(X_j=x_j|Y=y)$ pour chaque $y \in \mathcal{Y}$ et non pas à $\widehat{P}(Y=y|X=x)$. 
 
 #### La règle de décision
 
