@@ -151,6 +151,106 @@ Mettre en œuvre une première analyse sous R :
 * en utilisant la validation croisée sur l'échantillon "base" (lignes identifiées par cette modalité avec la variable _echantillon_ de la table `mushroom.csv`).
 </blockquote>
 
+On commence par importer les données et par constituer les 2 échantillons _train_ et _test_. Une variable `echantillon` contenant les modalités `base` et `test` peut être utilisée.
+
+```{r data_import, eval = FALSE}
+# Importer les données
+musch <- read.csv(file = "data/muschroom.csv")
+
+# Enlever la colonne X
+musch <- musch[, !names(musch) == "X"]
+
+# Définir les échantillons train et test
+train <- musch[musch$echantillon == "base", !names(musch) == "echantillon"]
+test <- musch[musch$echantillon == "test", !names(musch) == "echantillon"]
+```
+
+```{r data_import2, echo = FALSE}
+# Importer les données
+musch <- read.csv(file = "../data/muschroom.csv")
+
+# Enlever la colonne X
+musch <- musch[, !names(musch) == "X"]
+
+# Définir les échantillons train et test
+train <- musch[musch$echantillon == "base", !names(musch) == "echantillon"]
+test <- musch[musch$echantillon == "test", !names(musch) == "echantillon"]
+```
+
+On va maintenant construire un arbre CART pour prédire la variable `classe` qui indique si le champignon est comestible ou non. La fonction utilisée est `rpart::rpart()`, elle nécessite 2 arguments : 
+
+* `formula` : une formule qui spécifie la variable cible et les variables explicatives, on utilisera `classe ~ .`
+* `data` : une _data.frame_ contenant les données
+
+De nombreux arguments sont définis par défaut mais peuvent bien sûr être modifiés. Ces arguments sont les hyper-paramètres de la méthode CART. Ils sont définis dans la fonction `rpart::rpart.control()`.
+
+* `minsplit` : le nombre minimal d'observations dans un nœud pour considérer une division
+* `minbucket` : le nombre minimal d'observations dans un nœud enfant
+* `xval` : le nombre de blocs utilisés pour la validation croisée pendant l'élagage
+* `maxcompete` : le nombre de divisions compétitives retenues (divisions equi-reductrices)
+* `maxsurrogate` : le nombre de divisions surrogates retenues (divisions equi-divisantes)
+* `usesurrogate` : la manière avec laquelle les données manquantes sont gérées. Voir la documentation pour plus d'information.
+* `maxdepth` : la profondeur maximale de l'arbre
+
+Le type d'arbre qui sera construit, régression ou classification, dépend du type de la variable cible. Pour une variable de type _factor_ ce sera une classification avec _Gini_ comme indice d'impureté.
+
+On construit le modèle CART avec la commande suivante : 
+
+```{r cart}
+# Définir les paramètres utilisés par rpart
+parametres <- rpart.control(
+  minsplit = 60, 
+  minbucket = 30,
+  xval = 5, 
+  maxcompete = 4,
+  maxsurrogate = 4,
+  usesurrogate = 2,
+  maxdepth = 30
+)
+
+# Entraînement du modèle
+cart_model <- rpart(
+  formula = classe ~ .,
+  data = train,
+  control = parametres
+)
+```
+
+On peut visualiser l'arbre construit avec la fonction `rpart.plot::rpart.plot()`.
+
+```{r cart_plot}
+rpart.plot(cart_model)
+```
+
+La fonction `print()` appliqué au modèle créé permet aussi de voir l'arbre, sous forme moins visuelle mais avec plus de détails sur chaque nœud. On peut aussi avoir des informations supplémentaires avec la fonction `summary()`. 
+
+On peut effectuer des prédictions sur les données de test pour mesurer l'erreur de généralisation et visualiser la matrice de confusion.
+
+```{r cart_pred}
+# Effectuer une prédiction sur les données test
+cart_pred <- predict(
+  object = cart_model,
+  newdata = test,
+  type = "class" # renvoyer les classes prédites et non pas les probabilités
+)
+```
+
+```{r cart_conf_mat, echo = FALSE}
+table(test$classe, cart_pred) %>% 
+  kable() %>% 
+  add_header_above(c(" " = 1, "Prédictions" = 2)) %>%
+  kable_styling(full_width = FALSE)
+```
+
+L'erreur est de `r round(sum(cart_pred != test$classe) / nrow(test), digits = 3)`.
+
+## Question 10 - La première division
+
+La racine est divisée en 2 noeuds t1 et t2 avec la variable odor et la coupure construite sur la division binaire des modalités :
+- pour t1 les modalités odor = {a, l, n}
+- pour t2 les modalités odor = {c,f,m,p,s,y}
+Les segments t1 et t2 sont définis par les règles de décisions qui découlent de cette partition des modalités. Si odor dans {a, l, n} alors segment t1, sinon segment t2.
+Calcul de la variation d’impureté due à cette première division binaire (indicateur de Gini) dans l’échantillon de base (voir page 2 des listings) :
 
 <br>
 
