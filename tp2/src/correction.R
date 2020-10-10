@@ -15,22 +15,22 @@ library('rpart.plot') # visualisation du modèle CART
 musch <- read.csv(file = "tp2/data/muschroom.csv")
 
 # Enlever la colonne X
-musch <- musch[, -1]
+musch <- musch[, !names(musch) == "X"]
 
-# Définir les échantillnos train et test
-train <- musch[musch$echantillon == "base", -24]
-test <- musch[musch$echantillon == "test", -24]
+# Définir les échantillons train et test
+train <- musch[musch$echantillon == "base", !names(musch) == "echantillon"]
+test <- musch[musch$echantillon == "test", !names(musch) == "echantillon"]
 
 # Définir les paramètres utilisés par rpart
 parametres <- rpart.control(
   minsplit = 60, # il faut au moins 60 observations dans un noeud pour le diviser
   minbucket = 30, # une division ne doit pas générer un noeud avec moins de 30 observations
-  xval = 5, # nombre de blocs utilisés pour la validation croisée de l'élagage
+  xval = 10, # nombre de blocs utilisés pour la validation croisée de l'élagage
   maxcompete = 4, # nombre de divisions compétitives retenues (equi reducteur)
   maxsurrogate = 4, # nombre de divisions surrogates retenues (equi divisant)
   usesurrogate = 2, # comment sont gérées les valeurs manquantes, voir la documentation pour plus d'infos
-  maxdepth = 30, # la profondeur maximal de l'arbre,
-  cp = 0.01
+  maxdepth = 30 # la profondeur maximal de l'arbre,
+  # cp = 0 # Ne pas limiter la construction de l'arbre maximal
 )
 
 # Entraînement du modèle
@@ -55,19 +55,17 @@ rpart.plot(cart_model)
 # Afficher la matrice de confusion
 table(test$classe, cart_pred)
 
-
-
 # print the model
-print(model_cart)
+print(cart_model)
 
 # plot the tree
-rpart.plot(model)
+rpart.plot(cart_model)
 
 # print the results of the model
-summary(model)
+summary(cart_model)
 
 # evolution of the tree size and of the error based on the cp parameter
-plotcp(model)
+plotcp(cart_model)
 
 # probabilities for the two classes for each observations of the test set
 predict(model, test)
