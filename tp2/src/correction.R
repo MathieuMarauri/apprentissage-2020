@@ -12,7 +12,7 @@ library('rpart.plot') # visualisation du modèle CART
 # Question 9 - Un premier modèle ---------------------------------------------------------
 
 # Importer les données
-musch <- read.csv(file = "tp2/data/muschroom.csv")
+musch <- read.csv(file = "tp2/data/muschroom.csv", stringsAsFactors = TRUE)
 
 # Enlever la colonne X
 musch <- musch[, !names(musch) == "X"]
@@ -22,7 +22,7 @@ train <- musch[musch$echantillon == "base", !names(musch) == "echantillon"]
 test <- musch[musch$echantillon == "test", !names(musch) == "echantillon"]
 
 # Définir les paramètres utilisés par rpart
-parametres <- rpart.control(
+cart_parameters <- rpart.control(
   minsplit = 60, # il faut au moins 60 observations dans un noeud pour le diviser
   minbucket = 30, # une division ne doit pas générer un noeud avec moins de 30 observations
   xval = 10, # nombre de blocs utilisés pour la validation croisée de l'élagage
@@ -38,7 +38,7 @@ cart_model <- rpart(
   formula = classe ~ .,
   data = train,
   method = "class",
-  control = parametres,
+  control = cart_parameters,
   parms = list(split = 'gini')
 )
 
@@ -93,7 +93,7 @@ error_rate <- sum(predtest != test$classe) / nrow(test)
 # Adding special cost for errors: C(eatable/poison) = 1000, C(poison/eatable) = 1
 
 # build the model
-model2 <- rpart(
+cart_model_cost <- rpart(
   classe ~ .,
   data = base,
   parms = list(
@@ -141,7 +141,7 @@ sum(predtest2 != test$classe) / nrow(test)
 # chaid decision tree
 model3 <- chaid(
   formula = classe ~ .,
-  data = base,
+  data = train,
   control = chaid_control(
     minsplit = 60,
     minbucket = 30
@@ -159,5 +159,5 @@ plot(
   margin = 0.2,
   branch = 0.3
 )
-
+plot(model3)
 
